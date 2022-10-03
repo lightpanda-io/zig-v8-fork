@@ -674,6 +674,10 @@ pub const FunctionTemplate = struct {
         };
     }
 
+    pub fn inherit(self: Self, parent: FunctionTemplate) void {
+        c.v8__FunctionTemplate__Inherit(self.handle, parent.handle);
+    }
+
     /// This is typically used to set class fields.
     pub fn getInstanceTemplate(self: Self) ObjectTemplate {
         return .{
