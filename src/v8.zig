@@ -1558,7 +1558,6 @@ pub const ScriptCompilerCachedData = struct {
 };
 
 pub const ScriptCompiler = struct {
-
     const CompileOptions = enum(u32) {
         kNoCompileOptions = c.kNoCompileOptions,
         kConsumeCodeCache = c.kConsumeCodeCache,
@@ -1588,7 +1587,7 @@ pub const ScriptCompiler = struct {
     /// Corresponds to the ParseModule abstract operation in the ECMAScript specification.
     pub fn compileModule(iso: Isolate, src: *ScriptCompilerSource, options: ScriptCompiler.CompileOptions, reason: ScriptCompiler.NoCacheReason) !Module {
         const mb_res = c.v8__ScriptCompiler__CompileModule(
-            iso.handle, 
+            iso.handle,
             &src.inner,
             @enumToInt(options),
             @enumToInt(reason),
@@ -2143,7 +2142,6 @@ pub const Uint8Array = struct {
 };
 
 pub const Json = struct {
-
     pub fn parse(ctx: Context, json: String) !Value {
         return Value{
             .handle = c.v8__JSON__Parse(ctx.handle, json.handle) orelse return error.JsException,
