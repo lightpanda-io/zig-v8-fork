@@ -1086,6 +1086,12 @@ const v8::ObjectTemplate* v8__FunctionTemplate__PrototypeTemplate(
     return local_to_ptr(ptr_to_local(&self)->PrototypeTemplate());
 }
 
+void v8__FunctionTemplate__Inherit(
+        const v8::FunctionTemplate& self,
+        const v8::FunctionTemplate& parent) {
+    ptr_to_local(&self)->Inherit(ptr_to_local(&parent));
+}
+
 const v8::Function* v8__FunctionTemplate__GetFunction(
         const v8::FunctionTemplate& self, const v8::Context& context) {
     return maybe_local_to_ptr(
