@@ -463,7 +463,7 @@ fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
             // We need libcpmt to statically link with c++ stl for exception_ptr references from V8.
             // Zig already adds the SDK path to the linker but doesn't sync it to the internal libs array which linkSystemLibrary checks against.
             // For now we'll hardcode the MSVC path here.
-            step.addLibPath("C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64");
+            step.addLibraryPath("C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64");
             step.linkSystemLibrary("libcpmt");
         }
     }
@@ -472,7 +472,7 @@ fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
 fn createTest(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *std.build.LibExeObjStep {
     const step = b.addTest("./test/test.zig");
     step.setMainPkgPath(".");
-    step.addIncludeDir("./src");
+    step.addIncludePath("./src");
     step.setTarget(target);
     step.setBuildMode(mode);
     step.linkLibC();
@@ -665,7 +665,7 @@ fn createBuildExeStep(b: *Builder, path: []const u8, target: std.zig.CrossTarget
     step.setTarget(target);
 
     step.linkLibC();
-    step.addIncludeDir("src");
+    step.addIncludePath("src");
 
     const output_dir_rel = std.fmt.allocPrint(b.allocator, "zig-out/{s}", .{name}) catch unreachable;
     const output_dir = b.pathFromRoot(output_dir_rel);
