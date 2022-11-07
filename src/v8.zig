@@ -1096,6 +1096,10 @@ pub const Number = struct {
         };
     }
 
+    pub fn initBitCastedI64(isolate: Isolate, val: i64) Self {
+        return init(isolate, @bitCast(f64, val));
+    }
+
     pub fn initBitCastedU64(isolate: Isolate, val: u64) Self {
         return init(isolate, @bitCast(f64, val));
     }
@@ -1776,6 +1780,14 @@ pub const Value = struct {
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
         if (out.has_value == 1) {
             return out.value;
+        } else return error.JsException;
+    }
+
+    pub fn bitCastToI64(self: Self, ctx: Context) !i64 {
+        var out: c.MaybeF64 = undefined;
+        c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
+        if (out.has_value == 1) {
+            return @bitCast(i64, out.value);
         } else return error.JsException;
     }
 
