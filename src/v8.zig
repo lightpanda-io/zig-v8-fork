@@ -1183,6 +1183,8 @@ inline fn getValueHandle(val: anytype) *const c.Value {
         Integer => val.handle,
         Primitive => val.handle,
         Number => val.handle,
+        BigInt => val.handle,
+        Boolean => val.handle,
         Function => val.handle,
         PromiseResolver => val.handle,
         External => val.handle,
@@ -1884,10 +1886,13 @@ pub const Value = struct {
             Promise,
             External,
             Integer,
+            BigInt,
+            Boolean,
             ArrayBuffer,
             ArrayBufferView,
             Uint8Array,
-            String => {
+            String,
+            => {
                 return .{
                     .handle = self.handle,
                 };
