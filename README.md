@@ -24,7 +24,7 @@ Static libs are built and released with [Github Actions](https://github.com/fuba
 \* Time is measured on standard Github instances.
 
 ## System Requirements
-- Zig compiler (0.9.0). You can get that [here](https://ziglang.org/download/).
+- Zig compiler (0.11.0). You can get that [here](https://ziglang.org/download/).
 - Python 3 (2.7 seems to work as well)
 - For native macOS builds:
   - XCode (You won't need this when using zig's c++ toolchain!)<br/>
@@ -58,6 +58,9 @@ zig build -Drelease-safe
 # shell.zig is a simple JS repl.
 # Assumes you've already built v8.
 zig build run -Dpath="src/shell.zig" -Drelease-safe
+
+# If you built v8 using the zig toolchain, you'll need to add the flag here as well.
+zig build run -Dpath="src/shell.zig" -Drelease-safe -Dzig-toolchain
 ```
 
 ## Cross Compiling

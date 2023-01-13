@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
-typedef char bool;
 typedef uintptr_t usize;
 typedef struct Data Data;
 typedef struct ArrayBuffer ArrayBuffer;
@@ -216,7 +216,8 @@ typedef struct CreateParams {
     bool only_terminate_in_safe_scope;
     int embedder_wrapper_type_index;
     int embedder_wrapper_object_index;
-    Isolate* experimental_attach_to_shared_isolate;
+    void* fatal_error_callback;
+    void* oom_error_callback;
 } CreateParams;
 usize v8__Isolate__CreateParams__SIZEOF();
 void v8__Isolate__CreateParams__CONSTRUCT(CreateParams* buf);
