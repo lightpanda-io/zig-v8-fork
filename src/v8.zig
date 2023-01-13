@@ -100,7 +100,7 @@ pub const Platform = struct {
     /// the |behavior| parameter, this call does not block if no task is pending. The
     /// |platform| has to be created using |NewDefaultPlatform|.
     pub fn pumpMessageLoop(self: Self, isolate: Isolate, wait_for_work: bool) bool {
-        return c.v8__Platform__PumpMessageLoop(self.handle, isolate.handle, if (wait_for_work) 1 else 0);
+        return c.v8__Platform__PumpMessageLoop(self.handle, isolate.handle, wait_for_work);
     }
 };
 
@@ -281,11 +281,11 @@ pub const Isolate = struct {
     }
 
     pub fn addMessageListener(self: Self, callback: c.MessageCallback) bool {
-        return c.v8__Isolate__AddMessageListener(self.handle, callback) == 1;
+        return c.v8__Isolate__AddMessageListener(self.handle, callback);
     }
 
     pub fn addMessageListenerWithErrorLevel(self: Self, callback: c.MessageCallback, message_levels: c_int, value: Value) bool {
-        return c.v8__Isolate__AddMessageListenerWithErrorLevel(self.handle, callback, message_levels, value.handle) == 1;
+        return c.v8__Isolate__AddMessageListenerWithErrorLevel(self.handle, callback, message_levels, value.handle);
     }
 
     /// [v8]
@@ -301,7 +301,7 @@ pub const Isolate = struct {
     }
 
     pub fn isExecutionTerminating(self: Self) bool {
-        return c.v8__Isolate__IsExecutionTerminating(self.handle) == 1;
+        return c.v8__Isolate__IsExecutionTerminating(self.handle);
     }
 
     pub fn cancelTerminateExecution(self: Self) void {
@@ -327,7 +327,7 @@ pub const Isolate = struct {
     }
 
     pub fn initBoolean(self: Self, val: bool) Boolean {
-        return Boolean.init(self, if (val) 1 else 0);
+        return Boolean.init(self, val);
     }
 
     pub fn initIntegerI32(self: Self, val: i32) Integer {
@@ -982,7 +982,7 @@ pub const Object = struct {
         var out: c.MaybeBool = undefined;
         c.v8__Object__Set(self.handle, ctx.handle, getValueHandle(key), getValueHandle(value), &out);
         // Set only returns empty for an error or true.
-        return out.has_value == 1;
+        return out.has_value;
     }
 
     pub fn getValue(self: Self, ctx: Context, key: anytype) !Value {
@@ -1010,8 +1010,8 @@ pub const Object = struct {
     pub fn defineOwnProperty(self: Self, ctx: Context, name: anytype, value: anytype, attr: c.PropertyAttribute) ?bool {
         var out: c.MaybeBool = undefined;
         c.v8__Object__DefineOwnProperty(self.handle, ctx.handle, getNameHandle(name), getValueHandle(value), attr, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return null;
     }
 
@@ -1034,16 +1034,16 @@ pub const Object = struct {
     pub fn has(self: Self, ctx: Context, key: Value) bool {
         var out: c.MaybeBool = undefined;
         c.v8__Object__Has(self.handle, ctx.handle, key.handle, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return false;
     }
 
     pub fn hasIndex(self: Self, ctx: Context, idx: u32) bool {
         var out: c.MaybeBool = undefined;
         c.v8__Object__Has(self.handle, ctx.handle, idx, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return false;
     }
 
@@ -1357,19 +1357,19 @@ pub const StackFrame = struct {
     }
 
     pub fn isEval(self: Self) bool {
-        return c.v8__StackFrame__IsEval(self.handle) == 1;
+        return c.v8__StackFrame__IsEval(self.handle);
     }
 
     pub fn isConstructor(self: Self) bool {
-        return c.v8__StackFrame__IsConstructor(self.handle) == 1;
+        return c.v8__StackFrame__IsConstructor(self.handle);
     }
 
     pub fn isWasm(self: Self) bool {
-        return c.v8__StackFrame__IsWasm(self.handle) == 1;
+        return c.v8__StackFrame__IsWasm(self.handle);
     }
 
     pub fn isUserJavascript(self: Self) bool {
-        return c.v8__StackFrame__IsUserJavaScript(self.handle) == 1;
+        return c.v8__StackFrame__IsUserJavaScript(self.handle);
     }
 };
 
@@ -1388,7 +1388,7 @@ pub const TryCatch = struct {
     }
 
     pub fn hasCaught(self: Self) bool {
-        return c.v8__TryCatch__HasCaught(&self.inner) == 1;
+        return c.v8__TryCatch__HasCaught(&self.inner);
     }
 
     pub fn getException(self: Self) ?Value {
@@ -1416,11 +1416,11 @@ pub const TryCatch = struct {
     }
 
     pub fn isVerbose(self: Self) bool {
-        return c.v8__TryCatch__IsVerbose(&self.inner) == 1;
+        return c.v8__TryCatch__IsVerbose(&self.inner);
     }
 
     pub fn setVerbose(self: *Self, verbose: bool) void {
-        c.v8__TryCatch__SetVerbose(&self.inner, if (verbose) 1 else 0);
+        c.v8__TryCatch__SetVerbose(&self.inner, verbose);
     }
 
     pub fn rethrow(self: *Self) Value {
@@ -1466,9 +1466,9 @@ pub const ScriptOrigin = struct {
             resource_is_shared_cross_origin,
             script_id,
             if (source_map_url != null) source_map_url.?.handle else null,
-            if (resource_is_opaque) 1 else 0,
-            if (is_wasm) 1 else 0,
-            if (is_module) 1 else 0,
+            resource_is_opaque,
+            is_wasm,
+            is_module,
             if (host_defined_options != null) host_defined_options.?.handle else null,
         );
         return .{
@@ -1484,7 +1484,7 @@ pub const Boolean = struct {
 
     pub fn init(isolate: Isolate, val: bool) Self {
         return .{
-            .handle = c.v8__Boolean__New(isolate.handle, if (val) 1 else 0).?,
+            .handle = c.v8__Boolean__New(isolate.handle, val).?,
         };
     }
 };
@@ -1660,8 +1660,8 @@ pub const Module = struct {
     pub fn instantiate(self: Self, ctx: Context, cb: c.ResolveModuleCallback) !bool {
         var out: c.MaybeBool = undefined;
         c.v8__Module__InstantiateModule(self.handle, ctx.handle, cb, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return error.JsException;
     }
 
@@ -1746,13 +1746,13 @@ pub const Value = struct {
     }
 
     pub fn toBool(self: Self, isolate: Isolate) bool {
-        return c.v8__Value__BooleanValue(self.handle, isolate.handle) == 1;
+        return c.v8__Value__BooleanValue(self.handle, isolate.handle);
     }
 
     pub fn toI32(self: Self, ctx: Context) !i32 {
         var out: c.MaybeI32 = undefined;
         c.v8__Value__Int32Value(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return out.value;
         } else return error.JsException;
     }
@@ -1760,7 +1760,7 @@ pub const Value = struct {
     pub fn toU32(self: Self, ctx: Context) !u32 {
         var out: c.MaybeU32 = undefined;
         c.v8__Value__Uint32Value(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return out.value;
         } else return error.JsException;
     }
@@ -1768,7 +1768,7 @@ pub const Value = struct {
     pub fn toF32(self: Self, ctx: Context) !f32 {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return @floatCast(f32, out.value);
         } else return error.JsException;
     }
@@ -1776,7 +1776,7 @@ pub const Value = struct {
     pub fn toF64(self: Self, ctx: Context) !f64 {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return out.value;
         } else return error.JsException;
     }
@@ -1784,7 +1784,7 @@ pub const Value = struct {
     pub fn bitCastToI64(self: Self, ctx: Context) !i64 {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return @bitCast(i64, out.value);
         } else return error.JsException;
     }
@@ -1792,7 +1792,7 @@ pub const Value = struct {
     pub fn bitCastToU64(self: Self, ctx: Context) !u64 {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
-        if (out.has_value == 1) {
+        if (out.has_value) {
             return @bitCast(u64, out.value);
         } else return error.JsException;
     }
@@ -1800,77 +1800,77 @@ pub const Value = struct {
     pub fn instanceOf(self: Self, ctx: Context, obj: Object) !bool {
         var out: c.MaybeBool = undefined;
         c.v8__Value__InstanceOf(self.handle, ctx.handle, obj.handle, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return error.JsException;
     }
 
     pub fn isObject(self: Self) bool {
-        return c.v8__Value__IsObject(self.handle) == 1;
+        return c.v8__Value__IsObject(self.handle);
     }
 
     pub fn isString(self: Self) bool {
-        return c.v8__Value__IsString(self.handle) == 1;
+        return c.v8__Value__IsString(self.handle);
     }
 
     pub fn isFunction(self: Self) bool {
-        return c.v8__Value__IsFunction(self.handle) == 1;
+        return c.v8__Value__IsFunction(self.handle);
     }
 
     pub fn isAsyncFunction(self: Self) bool {
-        return c.v8__Value__IsAsyncFunction(self.handle) == 1;
+        return c.v8__Value__IsAsyncFunction(self.handle);
     }
 
     pub fn isArray(self: Self) bool {
-        return c.v8__Value__IsArray(self.handle) == 1;
+        return c.v8__Value__IsArray(self.handle);
     }
 
     pub fn isArrayBuffer(self: Self) bool {
-        return c.v8__Value__IsArrayBuffer(self.handle) == 1;
+        return c.v8__Value__IsArrayBuffer(self.handle);
     }
 
     pub fn isArrayBufferView(self: Self) bool {
-        return c.v8__Value__IsArrayBufferView(self.handle) == 1;
+        return c.v8__Value__IsArrayBufferView(self.handle);
     }
 
     pub fn isUint8Array(self: Self) bool {
-        return c.v8__Value__IsUint8Array(self.handle) == 1;
+        return c.v8__Value__IsUint8Array(self.handle);
     }
 
     pub fn isExternal(self: Self) bool {
-        return c.v8__Value__IsExternal(self.handle) == 1;
+        return c.v8__Value__IsExternal(self.handle);
     }
 
     pub fn isTrue(self: Self) bool {
-        return c.v8__Value__IsTrue(self.handle) == 1;
+        return c.v8__Value__IsTrue(self.handle);
     }
 
     pub fn isFalse(self: Self) bool {
-        return c.v8__Value__IsFalse(self.handle) == 1;
+        return c.v8__Value__IsFalse(self.handle);
     }
 
     pub fn isUndefined(self: Self) bool {
-        return c.v8__Value__IsUndefined(self.handle) == 1;
+        return c.v8__Value__IsUndefined(self.handle);
     }
 
     pub fn isNull(self: Self) bool {
-        return c.v8__Value__IsNull(self.handle) == 1;
+        return c.v8__Value__IsNull(self.handle);
     }
 
     pub fn isNullOrUndefined(self: Self) bool {
-        return c.v8__Value__IsNullOrUndefined(self.handle) == 1;
+        return c.v8__Value__IsNullOrUndefined(self.handle);
     }
 
     pub fn isNativeError(self: Self) bool {
-        return c.v8__Value__IsNativeError(self.handle) == 1;
+        return c.v8__Value__IsNativeError(self.handle);
     }
 
     pub fn isBigInt(self: Self) bool {
-        return c.v8__Value__IsBigInt(self.handle) == 1;
+        return c.v8__Value__IsBigInt(self.handle);
     }
 
     pub fn isBigIntObject(self: Self) bool {
-        return c.v8__Value__IsBigIntObject(self.handle) == 1;
+        return c.v8__Value__IsBigIntObject(self.handle);
     }
 
     /// Should only be called if you know the underlying type.
@@ -2008,8 +2008,8 @@ pub const PromiseResolver = struct {
     pub fn resolve(self: Self, ctx: Context, val: Value) ?bool {
         var out: c.MaybeBool = undefined;
         c.v8__Promise__Resolver__Resolve(self.handle, ctx.handle, val.handle, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return null;
     }
 
@@ -2017,8 +2017,8 @@ pub const PromiseResolver = struct {
     pub fn reject(self: Self, ctx: Context, val: Value) ?bool {
         var out: c.MaybeBool = undefined;
         c.v8__Promise__Resolver__Reject(self.handle, ctx.handle, val.handle, &out);
-        if (out.has_value == 1) {
-            return out.value == 1;
+        if (out.has_value) {
+            return out.value;
         } else return null;
     }
 };
@@ -2045,7 +2045,7 @@ pub const BackingStore = struct {
     }
 
     pub fn isShared(self: Self) bool {
-        return c.v8__BackingStore__IsShared(self.handle) == 1;
+        return c.v8__BackingStore__IsShared(self.handle);
     }
 
     pub fn toSharedPtr(self: Self) SharedPtr {
