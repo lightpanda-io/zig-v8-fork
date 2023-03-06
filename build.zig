@@ -373,27 +373,39 @@ fn createGetTools(b: *Builder) *std.build.LogStep {
 }
 
 fn getNinjaPath(b: *Builder) []const u8 {
-    const platform = switch (builtin.os.tag) {
-        .windows => "win",
-        .linux => "linux64",
+    const os = switch (builtin.os.tag) {
+        .windows => "windows",
+        .linux => "linux",
         .macos => "mac",
         else => unreachable,
     };
+    const arch = switch (builtin.cpu.arch) {
+        .x86_64 => "amd64",
+        .aarch64 => "arm64",
+        else => unreachable,
+    };
+    const platform = std.fmt.allocPrint(b.allocator, "{s}-{s}", .{ os, arch }) catch unreachable;
     const ext = if (builtin.os.tag == .windows) ".exe" else "";
     const bin = std.mem.concat(b.allocator, u8, &.{ "ninja", ext }) catch unreachable;
-    return std.fs.path.resolve(b.allocator, &.{ "./tools/ninja_gn_binaries-20210101", platform, bin }) catch unreachable;
+    return std.fs.path.resolve(b.allocator, &.{ "./tools/ninja_gn_binaries-20221218", platform, bin }) catch unreachable;
 }
 
 fn getGnPath(b: *Builder) []const u8 {
-    const platform = switch (builtin.os.tag) {
-        .windows => "win",
-        .linux => "linux64",
+    const os = switch (builtin.os.tag) {
+        .windows => "windows",
+        .linux => "linux",
         .macos => "mac",
         else => unreachable,
     };
+    const arch = switch (builtin.cpu.arch) {
+        .x86_64 => "amd64",
+        .aarch64 => "arm64",
+        else => unreachable,
+    };
+    const platform = std.fmt.allocPrint(b.allocator, "{s}-{s}", .{ os, arch }) catch unreachable;
     const ext = if (builtin.os.tag == .windows) ".exe" else "";
     const bin = std.mem.concat(b.allocator, u8, &.{ "gn", ext }) catch unreachable;
-    return std.fs.path.resolve(b.allocator, &.{ "./tools/ninja_gn_binaries-20210101", platform, bin }) catch unreachable;
+    return std.fs.path.resolve(b.allocator, &.{ "./tools/ninja_gn_binaries-20221218", platform, bin }) catch unreachable;
 }
 
 const MakePathStep = struct {
@@ -595,7 +607,7 @@ pub const GetV8SourceStep = struct {
         }
 
         // Get DEPS in json.
-        const deps_json = try self.b.execFromStep(&.{ "python", "tools/parse_deps.py", "v8/DEPS" }, &self.step);
+        const deps_json = try self.b.execFromStep(&.{ "python3", "tools/parse_deps.py", "v8/DEPS" }, &self.step);
         defer self.b.allocator.free(deps_json);
 
         var p = json.Parser.init(self.b.allocator, false);
