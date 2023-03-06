@@ -360,7 +360,7 @@ fn createGetV8(b: *Builder) *std.build.LogStep {
 fn createGetTools(b: *Builder) *std.build.LogStep {
     const step = b.addLog("Get Tools\n", .{});
 
-    var sub_step = b.addSystemCommand(&.{ "python", "./tools/get_ninja_gn_binaries.py", "--dir", "./tools" });
+    var sub_step = b.addSystemCommand(&.{ "python3", "./tools/get_ninja_gn_binaries.py", "--dir", "./tools" });
     step.step.dependOn(&sub_step.step);
 
     if (UseGclient) {
