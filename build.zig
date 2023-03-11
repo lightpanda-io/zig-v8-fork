@@ -233,6 +233,16 @@ fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mo
         if (builtin.os.tag != .windows) {
             try gn_args.append("cxx_use_ld=\"lld\"");
         }
+        if (target.getOsTag() == .linux and target.getCpuArch() == .aarch64) {
+            // On linux aarch64, we can not use the clang version provided in v8 sources
+            // as it's built for x86_64 (TODO: using Rosetta2 for Linux VM on Apple Sillicon?)
+            // Instead we can use a clang system version
+            // as long as we use the same version number (currently clang-16)
+            // Currently v8 uses clang-16 but Debian/Ubuntu are using older versions
+            // see https://apt.llvm.org/ to install clang-16
+            try gn_args.append("clang_base_path=\"/usr/lib/llvm-16\"");
+            try gn_args.append("clang_use_chrome_plugins=false");
+        }
     }
 
     // sccache, currently does not work with zig cc
