@@ -1975,6 +1975,12 @@ pub const Primitive = struct {
     const Self = @This();
 
     handle: *const c.Primitive,
+
+    pub fn toValue(self: Self) Value {
+        return .{
+            .handle = self.handle,
+        };
+    }
 };
 
 pub fn initUndefined(isolate: Isolate) Primitive {
