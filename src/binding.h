@@ -31,6 +31,7 @@ typedef Value Array;
 typedef Value Uint8Array;
 typedef Value ArrayBufferView;
 typedef Value External;
+typedef Value Symbol;
 typedef Value Boolean;
 typedef Value Promise;
 typedef Value PromiseResolver;
@@ -668,6 +669,19 @@ const External* v8__External__New(
     void* value);
 void* v8__External__Value(
     const External* self);
+
+// Symbol
+const Symbol* v8__Symbol__GetAsyncIterator(Isolate* isolate);
+const Symbol* v8__Symbol__GetHasInstance(Isolate* isolate);
+const Symbol* v8__Symbol__GetIsConcatSpreadable(Isolate* isolate);
+const Symbol* v8__Symbol__GetIterator(Isolate* isolate);
+const Symbol* v8__Symbol__GetMatch(Isolate* isolate);
+const Symbol* v8__Symbol__GetReplace(Isolate* isolate);
+const Symbol* v8__Symbol__GetSearch(Isolate* isolate);
+const Symbol* v8__Symbol__GetSplit(Isolate* isolate);
+const Symbol* v8__Symbol__GetToPrimitive(Isolate* isolate);
+const Symbol* v8__Symbol__GetToStringTag(Isolate* isolate);
+const Symbol* v8__Symbol__GetUnscopables(Isolate* isolate);
 
 // Persistent
 typedef struct Persistent {

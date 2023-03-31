@@ -1082,6 +1082,78 @@ pub const External = struct {
     }
 };
 
+pub const Symbol = struct {
+    const Self = @This();
+
+    handle: *const c.Symbol,
+
+    pub fn getAsyncIterator(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetAsyncIterator(isolate.handle).?,
+        };
+    }
+
+    pub fn getHasInstance(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetHasInstance(isolate.handle).?,
+        };
+    }
+
+    pub fn getIsConcatSpreadable(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetIsConcatSpreadable(isolate.handle).?,
+        };
+    }
+
+    pub fn getIterator(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetIterator(isolate.handle).?,
+        };
+    }
+
+    pub fn getMatch(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetMatch(isolate.handle).?,
+        };
+    }
+
+    pub fn getReplace(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetReplace(isolate.handle).?,
+        };
+    }
+
+    pub fn getSearch(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetSearch(isolate.handle).?,
+        };
+    }
+
+    pub fn getSplit(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetSplit(isolate.handle).?,
+        };
+    }
+
+    pub fn getToPrimitive(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetToPrimitive(isolate.handle).?,
+        };
+    }
+
+    pub fn getToStringTag(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetToStringTag(isolate.handle).?,
+        };
+    }
+
+    pub fn getUnscopables(isolate: Isolate) Self {
+        return .{
+            .handle = c.v8__Symbol__GetUnscopables(isolate.handle).?,
+        };
+    }
+};
+
 pub const Number = struct {
     const Self = @This();
 
@@ -1205,6 +1277,7 @@ inline fn getNameHandle(val: anytype) *const c.Name {
     return @ptrCast(*const c.Name, comptime switch (@TypeOf(val)) {
         *const c.String => val,
         String => val.handle,
+        Symbol => val.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Name", .{@typeName(@TypeOf(val))})),
     });
 }

@@ -1178,6 +1178,42 @@ const v8::External* v8__External__New(
 
 void* v8__External__Value(const v8::External& self) { return self.Value(); }
 
+// Symbol well-known
+
+const v8::Symbol* v8__Symbol__GetAsyncIterator(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetAsyncIterator(isolate));
+}
+const v8::Symbol* v8__Symbol__GetHasInstance(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetHasInstance(isolate));
+}
+const v8::Symbol* v8__Symbol__GetIsConcatSpreadable(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetIsConcatSpreadable(isolate));
+}
+const v8::Symbol* v8__Symbol__GetIterator(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetIterator(isolate));
+}
+const v8::Symbol* v8__Symbol__GetMatch(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetMatch(isolate));
+}
+const v8::Symbol* v8__Symbol__GetReplace(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetReplace(isolate));
+}
+const v8::Symbol* v8__Symbol__GetSearch(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetSearch(isolate));
+}
+const v8::Symbol* v8__Symbol__GetSplit(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetSplit(isolate));
+}
+const v8::Symbol* v8__Symbol__GetToPrimitive(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetToPrimitive(isolate));
+}
+const v8::Symbol* v8__Symbol__GetToStringTag(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetToStringTag(isolate));
+}
+const v8::Symbol* v8__Symbol__GetUnscopables(v8::Isolate* isolate) {
+    return local_to_ptr(v8::Symbol::GetUnscopables(isolate));
+}
+
 // Persistent
 
 void v8__Persistent__New(
