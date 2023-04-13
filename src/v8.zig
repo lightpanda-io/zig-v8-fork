@@ -47,6 +47,7 @@ pub const C_PromiseRejectMessage = c.PromiseRejectMessage;
 
 pub const C_Message = c.Message;
 pub const C_Value = c.Value;
+pub const C_Name = c.Name;
 pub const C_Context = c.Context;
 pub const C_Data = c.Data;
 pub const C_FixedArray = c.FixedArray;
@@ -59,8 +60,6 @@ pub const AccessorNameGetterCallback = c.AccessorNameGetterCallback;
 pub const AccessorNameSetterCallback = c.AccessorNameSetterCallback;
 
 pub const CreateParams = c.CreateParams;
-
-pub const Name = c.Name;
 
 pub const SharedPtr = c.SharedPtr;
 
@@ -718,12 +717,12 @@ pub const FunctionTemplate = struct {
     }
 
     /// Sets static property on the template.
-    pub fn set(self: Self, key: anytype, value: anytype, attr: c.PropertyAttribute) void {
-        c.v8__Template__Set(getTemplateHandle(self), getNameHandle(key), getDataHandle(value), attr);
+    pub fn set(self: Self, key: Name, value: anytype, attr: c.PropertyAttribute) void {
+        c.v8__Template__Set(getTemplateHandle(self), key.handle, getDataHandle(value), attr);
     }
 
-    pub fn setGetter(self: Self, name: anytype, getter: FunctionTemplate) void {
-        c.v8__Template__SetAccessorProperty__DEFAULT(getTemplateHandle(self), getNameHandle(name), getter.handle);
+    pub fn setGetter(self: Self, name: Name, getter: FunctionTemplate) void {
+        c.v8__Template__SetAccessorProperty__DEFAULT(getTemplateHandle(self), name.handle, getter.handle);
     }
 
     pub fn setClassName(self: Self, name: String) void {
@@ -895,16 +894,16 @@ pub const ObjectTemplate = struct {
         };
     }
 
-    pub fn setGetter(self: Self, name: anytype, getter: c.AccessorNameGetterCallback) void {
-        c.v8__ObjectTemplate__SetAccessor__DEFAULT(self.handle, getNameHandle(name), getter);
+    pub fn setGetter(self: Self, name: Name, getter: c.AccessorNameGetterCallback) void {
+        c.v8__ObjectTemplate__SetAccessor__DEFAULT(self.handle, name.handle, getter);
     }
 
-    pub fn setGetterAndSetter(self: Self, name: anytype, getter: c.AccessorNameGetterCallback, setter: c.AccessorNameSetterCallback) void {
-        c.v8__ObjectTemplate__SetAccessor__DEFAULT2(self.handle, getNameHandle(name), getter, setter);
+    pub fn setGetterAndSetter(self: Self, name: Name, getter: c.AccessorNameGetterCallback, setter: c.AccessorNameSetterCallback) void {
+        c.v8__ObjectTemplate__SetAccessor__DEFAULT2(self.handle, name.handle, getter, setter);
     }
 
-    pub fn set(self: Self, key: anytype, value: anytype, attr: c.PropertyAttribute) void {
-        c.v8__Template__Set(getTemplateHandle(self), getNameHandle(key), getDataHandle(value), attr);
+    pub fn set(self: Self, key: Name, value: anytype, attr: c.PropertyAttribute) void {
+        c.v8__Template__Set(getTemplateHandle(self), key.handle, getDataHandle(value), attr);
     }
 
     pub fn setInternalFieldCount(self: Self, count: u32) void {
@@ -1007,9 +1006,9 @@ pub const Object = struct {
         };
     }
 
-    pub fn defineOwnProperty(self: Self, ctx: Context, name: anytype, value: anytype, attr: c.PropertyAttribute) ?bool {
+    pub fn defineOwnProperty(self: Self, ctx: Context, name: Name, value: anytype, attr: c.PropertyAttribute) ?bool {
         var out: c.MaybeBool = undefined;
-        c.v8__Object__DefineOwnProperty(self.handle, ctx.handle, getNameHandle(name), getValueHandle(value), attr, &out);
+        c.v8__Object__DefineOwnProperty(self.handle, ctx.handle, name.handle, getValueHandle(value), attr, &out);
         if (out.has_value) {
             return out.value;
         } else return null;
@@ -1082,10 +1081,22 @@ pub const External = struct {
     }
 };
 
+pub const Name = struct {
+    handle: *const c.Name,
+};
+
 pub const Symbol = struct {
     const Self = @This();
 
     handle: *const c.Symbol,
+
+    pub fn toName(self: Self) Name {
+        return .{
+            .handle = @ptrCast(*const c.Name, self.handle),
+        };
+    }
+
+    // well-known symbols
 
     pub fn getAsyncIterator(isolate: Isolate) Self {
         return .{
@@ -1270,15 +1281,6 @@ inline fn getValueHandle(val: anytype) *const c.Value {
         Persistent(PromiseResolver) => val.inner.handle,
         Persistent(Array) => val.inner.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Value", .{@typeName(@TypeOf(val))})),
-    });
-}
-
-inline fn getNameHandle(val: anytype) *const c.Name {
-    return @ptrCast(*const c.Name, comptime switch (@TypeOf(val)) {
-        *const c.String => val,
-        String => val.handle,
-        Symbol => val.handle,
-        else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Name", .{@typeName(@TypeOf(val))})),
     });
 }
 
@@ -1588,6 +1590,12 @@ pub const String = struct {
     pub fn toValue(self: Self) Value {
         return .{
             .handle = self.handle,
+        };
+    }
+
+    pub fn toName(self: Self) Name {
+        return .{
+            .handle = @ptrCast(*const c.Name, self.handle),
         };
     }
 };
