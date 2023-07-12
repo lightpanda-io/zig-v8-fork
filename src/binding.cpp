@@ -961,6 +961,14 @@ const v8::Array* v8__Object__GetPropertyNames(
     );
 }
 
+void v8__Object__SetPrototype(
+        const v8::Object& self,
+        const v8::Context& ctx,
+        const v8::Object& prototype,
+        v8::Maybe<bool>* out) {
+  *out = ptr_to_local(&self)->SetPrototype(ptr_to_local(&ctx), ptr_to_local(&prototype));
+}
+
 void v8__Object__SetAlignedPointerInInternalField(
         const v8::Object* self,
         int idx,

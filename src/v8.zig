@@ -1057,6 +1057,14 @@ pub const Object = struct {
             .handle = c.v8__Object__GetPropertyNames(self.handle, ctx.handle).?,
         };
     }
+
+    pub fn setPrototype(self: Self, ctx: Context, prototype: Object) bool {
+        var out: c.MaybeBool = undefined;
+        c.v8__Object__SetPrototype(self.handle, ctx.handle, prototype.handle, &out);
+        if (out.has_value) {
+            return out.value;
+        } else return false;
+    }
 };
 
 pub const External = struct {

@@ -507,6 +507,11 @@ const Array* v8__Object__GetOwnPropertyNames(
 const Array* v8__Object__GetPropertyNames(
     const Object* self,
     const Context* ctx);
+void v8__Object__SetPrototype(
+    const Object* self,
+    const Context* ctx,
+    const Object* prototype,
+    MaybeBool* out);
 void v8__Object__SetAlignedPointerInInternalField(
     const Object* self,
     int idx,
