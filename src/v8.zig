@@ -696,6 +696,10 @@ pub const FunctionTemplate = struct {
         c.v8__FunctionTemplate__Inherit(self.handle, parent.handle);
     }
 
+    pub fn setPrototypeProviderTemplate(self: Self, prototype_provider: FunctionTemplate) void {
+        c.v8__FunctionTemplate__SetPrototypeProviderTemplate(self.handle, prototype_provider.handle);
+    }
+
     /// This is typically used to set class fields.
     pub fn getInstanceTemplate(self: Self) ObjectTemplate {
         return .{

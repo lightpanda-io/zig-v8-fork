@@ -638,6 +638,9 @@ const ObjectTemplate* v8__FunctionTemplate__PrototypeTemplate(
 void v8__FunctionTemplate__Inherit(
     const FunctionTemplate* self,
     const FunctionTemplate* parent);
+void v8__FunctionTemplate__SetPrototypeProviderTemplate(
+    const FunctionTemplate* self,
+    const FunctionTemplate* prototype_provider);
 const Function* v8__FunctionTemplate__GetFunction(
     const FunctionTemplate* self, const Context* context);
 void v8__FunctionTemplate__SetClassName(

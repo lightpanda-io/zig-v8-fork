@@ -1100,6 +1100,12 @@ void v8__FunctionTemplate__Inherit(
     ptr_to_local(&self)->Inherit(ptr_to_local(&parent));
 }
 
+void v8__FunctionTemplate__SetPrototypeProviderTemplate(
+        const v8::FunctionTemplate& self,
+        const v8::FunctionTemplate& prototype_provider) {
+    ptr_to_local(&self)->SetPrototypeProviderTemplate(ptr_to_local(&prototype_provider));
+}
+
 const v8::Function* v8__FunctionTemplate__GetFunction(
         const v8::FunctionTemplate& self, const v8::Context& context) {
     return maybe_local_to_ptr(
