@@ -8,6 +8,8 @@ const c = @cImport({
 pub const PropertyAttribute = struct {
     pub const None = c.None;
     pub const ReadOnly = c.ReadOnly;
+    pub const DontEnum = c.DontEnum;
+    pub const DontDelete = c.DontDelete;
 };
 
 pub const PromiseRejectEvent = struct {
