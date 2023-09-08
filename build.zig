@@ -449,7 +449,7 @@ const MakePathStep = struct {
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
         _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
-        try self.b.makePath(self.path);
+        try std.fs.cwd().makePath(self.b.pathFromRoot(self.path));
     }
 };
 
