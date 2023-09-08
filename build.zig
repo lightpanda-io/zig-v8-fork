@@ -17,13 +17,13 @@ pub fn build(b: *Builder) !void {
     const target = b.standardTargetOptions(.{});
 
     const get_tools = createGetTools(b);
-    b.step("get-tools", "Gets the build tools.").dependOn(&get_tools.step);
+    b.step("get-tools", "Gets the build tools.").dependOn(get_tools);
 
     const get_v8 = createGetV8(b);
-    b.step("get-v8", "Gets v8 source using gclient.").dependOn(&get_v8.step);
+    b.step("get-v8", "Gets v8 source using gclient.").dependOn(get_v8);
 
     const v8 = try createV8_Build(b, target, mode, use_zig_tc);
-    b.step("v8", "Build v8 c binding lib.").dependOn(&v8.step);
+    b.step("v8", "Build v8 c binding lib.").dependOn(v8);
 
     const run_test = createTest(b, target, mode, use_zig_tc);
     b.step("test", "Run tests.").dependOn(&run_test.step);
@@ -34,7 +34,7 @@ pub fn build(b: *Builder) !void {
     const run_exe = build_exe.run();
     b.step("run", "Run with main file at -Dpath").dependOn(&run_exe.step);
 
-    b.default_step.dependOn(&v8.step);
+    b.default_step.dependOn(v8);
 }
 
 // When this is true, we'll strip V8 features down to a minimum so the resulting library is smaller.
@@ -48,21 +48,21 @@ const UseGclient = false;
 // V8's build process is complex and porting it to zig could take quite awhile.
 // It would be nice if there was a way to import .gn files into the zig build system.
 // For now we just use gn/ninja like rusty_v8 does: https://github.com/denoland/rusty_v8/blob/main/build.rs
-fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) !*std.build.LogStep {
-    const step = b.addLog("Built V8\n", .{});
+fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) !*std.build.Step {
+    const step = b.step("Built V8", "");
 
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient/v8/zig");
-        step.step.dependOn(&mkpath.step);
+        step.dependOn(&mkpath.step);
 
         const cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gclient.gn"), b.pathFromRoot("gclient/v8/zig/BUILD.gn"));
-        step.step.dependOn(&cp.step);
+        step.dependOn(&cp.step);
     } else {
         const mkpath = MakePathStep.create(b, "./v8/zig");
-        step.step.dependOn(&mkpath.step);
+        step.dependOn(&mkpath.step);
 
         const cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gn"), b.pathFromRoot("v8/zig/BUILD.gn"));
-        step.step.dependOn(&cp.step);
+        step.dependOn(&cp.step);
     }
 
     var gn_args = std.ArrayList([]const u8).init(b.allocator);
@@ -272,7 +272,7 @@ fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mo
     }
 
     // var check_deps = CheckV8DepsStep.create(b);
-    // step.step.dependOn(&check_deps.step);
+    // step.dependOn(&check_deps.step);
 
     const mode_str: []const u8 = if (mode == .Debug) "debug" else "release";
     // GN will generate ninja build files in ninja_out_path which will also contain the artifacts after running ninja.
@@ -294,17 +294,17 @@ fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mo
     // One idea is to append our BUILD.gn to the v8 BUILD.gn instead of putting it in a subdirectory.
     if (UseGclient) {
         var run_gn = b.addSystemCommand(&.{ gn, "--root=gclient/v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
-        step.step.dependOn(&run_gn.step);
+        step.dependOn(&run_gn.step);
     } else {
         // To see available args for gn: cd v8 && gn args --list ../v8-build/{target}/release/ninja/
         var run_gn = b.addSystemCommand(&.{ gn, "--root=v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
-        step.step.dependOn(&run_gn.step);
+        step.dependOn(&run_gn.step);
     }
 
     const ninja = getNinjaPath(b);
     // Only build our target. If no target is specified, ninja will build all the targets which includes developer tools, tests, etc.
     var run_ninja = b.addSystemCommand(&.{ ninja, "-C", ninja_out_path, "c_v8" });
-    step.step.dependOn(&run_ninja.step);
+    step.dependOn(&run_ninja.step);
 
     return step;
 }
@@ -349,34 +349,34 @@ const CheckV8DepsStep = struct {
     }
 };
 
-fn createGetV8(b: *Builder) *std.build.LogStep {
-    const step = b.addLog("Get V8\n", .{});
+fn createGetV8(b: *Builder) *std.build.Step {
+    const step = b.step("Get V8", "");
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient");
-        step.step.dependOn(&mkpath.step);
+        step.dependOn(&mkpath.step);
 
         // About depot_tools: https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html#_setting_up
         const cmd = b.addSystemCommand(&.{ b.pathFromRoot("./tools/depot_tools/fetch"), "v8" });
         cmd.cwd = "./gclient";
         cmd.addPathDir(b.pathFromRoot("./tools/depot_tools"));
-        step.step.dependOn(&cmd.step);
+        step.dependOn(&cmd.step);
     } else {
         const get = GetV8SourceStep.create(b);
-        step.step.dependOn(&get.step);
+        step.dependOn(&get.step);
     }
     return step;
 }
 
-fn createGetTools(b: *Builder) *std.build.LogStep {
-    const step = b.addLog("Get Tools\n", .{});
+fn createGetTools(b: *Builder) *std.build.Step {
+    const step = b.step("Get Tools", "");
 
     var sub_step = b.addSystemCommand(&.{ "python3", "./tools/get_ninja_gn_binaries.py", "--dir", "./tools" });
-    step.step.dependOn(&sub_step.step);
+    step.dependOn(&sub_step.step);
 
     if (UseGclient) {
         // Pull depot_tools for fetch tool.
         sub_step = b.addSystemCommand(&.{ "git", "clone", "--depth=1", "https://chromium.googlesource.com/chromium/tools/depot_tools.git", "tools/depot_tools" });
-        step.step.dependOn(&sub_step.step);
+        step.dependOn(&sub_step.step);
     }
 
     return step;
