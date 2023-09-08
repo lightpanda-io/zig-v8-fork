@@ -607,7 +607,8 @@ pub const GetV8SourceStep = struct {
         }
     }
 
-    fn runHook(self: *Self, hooks: json.Value, name: []const u8) !void {
+    fn runHook(self: *Self, step: *Step, prog_node: *std.Progress.Node, hooks: json.Value, name: []const u8) !void {
+        _ = prog_node;
         for (hooks.array.items) |hook| {
             if (std.mem.eql(u8, name, hook.object.get("name").?.string)) {
                 const cmd = hook.object.get("action").?.array;
@@ -616,8 +617,7 @@ pub const GetV8SourceStep = struct {
                 for (cmd.items) |it| {
                     try args.append(it.string);
                 }
-                const cwd = self.b.pathFromRoot("v8");
-                _ = try self.b.spawnChildEnvMap(cwd, self.b.env_map, args.items);
+                try step.evalChildProcess(args.items);
                 break;
             }
         }
@@ -672,7 +672,7 @@ pub const GetV8SourceStep = struct {
         // tools/clang
         try self.getDep(step, prog_node, deps, "tools/clang", "v8/tools/clang");
 
-        try self.runHook(hooks, "clang");
+        try self.runHook(step, prog_node, hooks, "clang");
 
         // third_party/zlib
         try self.getDep(step, prog_node, deps, "third_party/zlib", "v8/third_party/zlib");
