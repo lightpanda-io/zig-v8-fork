@@ -13,7 +13,7 @@ pub fn build(b: *Builder) !void {
     const path = b.option([]const u8, "path", "Path to main file, for: build, run") orelse "";
     const use_zig_tc = b.option(bool, "zig-toolchain", "Experimental: Use zig cc/c++/ld to build v8.") orelse false;
 
-    const mode = b.standardReleaseOptions();
+    const mode = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
     const get_tools = createGetTools(b);
