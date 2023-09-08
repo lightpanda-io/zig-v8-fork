@@ -338,10 +338,7 @@ const CheckV8DepsStep = struct {
     }
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
-        _ = prog_node;
-        const self = @fieldParentPtr(Self, "step", step);
-
-        const output = try self.b.execFromStep(&.{ "clang", "--version" }, step);
+        const output = try step.evalZigProcess(&.{ "clang", "--version" }, prog_node);
         print("clang: {s}", .{output});
 
         // TODO: Find out the actual minimum and check against other clang flavors.
@@ -591,19 +588,19 @@ pub const GetV8SourceStep = struct {
         };
     }
 
-    fn getDep(self: *Self, deps: json.Value, key: []const u8, local_path: []const u8) !void {
+    fn getDep(self: *Self, step: *Step, prog_node: *std.Progress.Node, deps: json.Value, key: []const u8, local_path: []const u8) !void {
         const dep = try self.parseDep(deps, key);
         defer dep.deinit();
 
-        const stat = try statPathFromRoot(self.b, local_path);
+        const stat = try statPathFromRoot(step.owner, local_path);
         if (stat == .NotExist) {
-            _ = try self.b.execFromStep(&.{ "git", "clone", dep.repo_url, local_path }, &self.step);
+            _ = try step.evalZigProcess(&.{ "git", "clone", dep.repo_url, local_path }, prog_node);
         }
-        _ = try self.b.execFromStep(&.{ "git", "-C", local_path, "checkout", dep.repo_rev }, &self.step);
+        _ = try step.evalZigProcess(&.{ "git", "-C", local_path, "checkout", dep.repo_rev }, prog_node);
         if (stat == .NotExist) {
             // Apply patch for v8/build
             if (std.mem.eql(u8, key, "build")) {
-                _ = try self.b.execFromStep(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" }, &self.step);
+                _ = try step.evalZigProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" }, prog_node);
             }
         }
     }
@@ -625,7 +622,6 @@ pub const GetV8SourceStep = struct {
     }
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
-        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
 
         // Pull the minimum source we need by looking at DEPS.
@@ -637,13 +633,13 @@ pub const GetV8SourceStep = struct {
         // Clone V8.
         const stat = try statPathFromRoot(self.b, "v8");
         if (stat == .NotExist) {
-            _ = try self.b.execFromStep(&.{ "git", "clone", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" }, &self.step);
+            _ = try step.evalZigProcess(&.{ "git", "clone", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" }, prog_node);
             // Apply patch for v8 root.
-            _ = try self.b.execFromStep(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" }, &self.step);
+            _ = try step.evalZigProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" }, prog_node);
         }
 
         // Get DEPS in json.
-        const deps_json = try self.b.execFromStep(&.{ "python3", "tools/parse_deps.py", "v8/DEPS" }, &self.step);
+        const deps_json = try step.evalZigProcess(&.{ "python3", "tools/parse_deps.py", "v8/DEPS" }, prog_node);
         defer self.b.allocator.free(deps_json);
 
         var p = json.Parser.init(self.b.allocator, false);
@@ -656,7 +652,7 @@ pub const GetV8SourceStep = struct {
         var hooks = tree.root.Object.get("hooks").?;
 
         // build
-        try self.getDep(deps, "build", "v8/build");
+        try self.getDep(step, prog_node, deps, "build", "v8/build");
 
         // Add an empty gclient_args.gni so gn is happy. gclient also creates an empty file.
         const file = try std.fs.createFileAbsolute(self.b.pathFromRoot("v8/build/config/gclient_args.gni"), .{ .read = false, .truncate = true });
@@ -665,33 +661,33 @@ pub const GetV8SourceStep = struct {
         file.close();
 
         // buildtools
-        try self.getDep(deps, "buildtools", "v8/buildtools");
+        try self.getDep(step, prog_node, deps, "buildtools", "v8/buildtools");
 
         // libc++
-        try self.getDep(deps, "buildtools/third_party/libc++/trunk", "v8/buildtools/third_party/libc++/trunk");
+        try self.getDep(step, prog_node, deps, "buildtools/third_party/libc++/trunk", "v8/buildtools/third_party/libc++/trunk");
 
         // tools/clang
-        try self.getDep(deps, "tools/clang", "v8/tools/clang");
+        try self.getDep(step, prog_node, deps, "tools/clang", "v8/tools/clang");
 
         try self.runHook(hooks, "clang");
 
         // third_party/zlib
-        try self.getDep(deps, "third_party/zlib", "v8/third_party/zlib");
+        try self.getDep(step, prog_node, deps, "third_party/zlib", "v8/third_party/zlib");
 
         // libc++abi
-        try self.getDep(deps, "buildtools/third_party/libc++abi/trunk", "v8/buildtools/third_party/libc++abi/trunk");
+        try self.getDep(step, prog_node, deps, "buildtools/third_party/libc++abi/trunk", "v8/buildtools/third_party/libc++abi/trunk");
 
         // googletest
-        try self.getDep(deps, "third_party/googletest/src", "v8/third_party/googletest/src");
+        try self.getDep(step, prog_node, deps, "third_party/googletest/src", "v8/third_party/googletest/src");
 
         // trace_event
-        try self.getDep(deps, "base/trace_event/common", "v8/base/trace_event/common");
+        try self.getDep(step, prog_node, deps, "base/trace_event/common", "v8/base/trace_event/common");
 
         // jinja2
-        try self.getDep(deps, "third_party/jinja2", "v8/third_party/jinja2");
+        try self.getDep(step, prog_node, deps, "third_party/jinja2", "v8/third_party/jinja2");
 
         // markupsafe
-        try self.getDep(deps, "third_party/markupsafe", "v8/third_party/markupsafe");
+        try self.getDep(step, prog_node, deps, "third_party/markupsafe", "v8/third_party/markupsafe");
 
         // For windows.
         if (builtin.os.tag == .windows) {
@@ -702,7 +698,7 @@ pub const GetV8SourceStep = struct {
             const merge_base_sha = "HEAD";
             const commit_filter = "^Change-Id:";
             const grep_arg = try std.fmt.allocPrint(self.b.allocator, "--grep={s}", .{commit_filter});
-            const version_info = try self.b.execFromStep(&.{ "git", "-C", "v8/build", "log", "-1", "--format=%H %ct", grep_arg, merge_base_sha }, &self.step);
+            const version_info = try step.evalZigProcess(&.{ "git", "-C", "v8/build", "log", "-1", "--format=%H %ct", grep_arg, merge_base_sha }, prog_node);
             const idx = std.mem.indexOfScalar(u8, version_info, ' ').?;
             const commit_timestamp = version_info[idx + 1 ..];
 
