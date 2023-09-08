@@ -1,7 +1,7 @@
 const std = @import("std");
 const json = std.json;
 const Builder = std.build.Builder;
-const LibExeObjStep = std.build.LibExeObjStep;
+const CompileStep = std.build.CompileStep;
 const Step = std.build.Step;
 const print = std.debug.print;
 const builtin = @import("builtin");
@@ -28,7 +28,7 @@ pub fn build(b: *Builder) !void {
     const run_test = createTest(b, target, mode, use_zig_tc);
     b.step("test", "Run tests.").dependOn(&run_test.step);
 
-    const build_exe = createBuildExeStep(b, path, target, mode, use_zig_tc);
+    const build_exe = createCompileStep(b, path, target, mode, use_zig_tc);
     b.step("exe", "Build exe with main file at -Dpath").dependOn(&build_exe.step);
 
     const run_exe = b.addRunArtifact(build_exe);
@@ -482,7 +482,7 @@ const CopyFileStep = struct {
 };
 
 // TODO: Make this usable from external project.
-fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
+fn linkV8(b: *Builder, step: *std.build.CompileStep, use_zig_tc: bool) void {
     const mode = step.optimize;
     const target = step.target;
 
@@ -517,7 +517,7 @@ fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
     }
 }
 
-fn createTest(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *std.build.LibExeObjStep {
+fn createTest(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *std.build.CompileStep {
     const step = b.addTest(.{
         .root_source_file = .{ .path = "./test/test.zig" },
         .main_pkg_path = .{ .path = "." },
@@ -708,7 +708,7 @@ pub const GetV8SourceStep = struct {
     }
 };
 
-fn createBuildExeStep(b: *Builder, path: []const u8, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *LibExeObjStep {
+fn createCompileStep(b: *Builder, path: []const u8, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *CompileStep {
     const basename = std.fs.path.basename(path);
     const i = std.mem.indexOf(u8, basename, ".zig") orelse basename.len;
     const name = basename[0..i];
