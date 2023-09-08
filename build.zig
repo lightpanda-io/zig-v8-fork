@@ -589,8 +589,7 @@ pub const GetV8SourceStep = struct {
         };
     }
 
-    fn getDep(self: *Self, step: *Step, prog_node: *std.Progress.Node, deps: json.Value, key: []const u8, local_path: []const u8) !void {
-        _ = prog_node;
+    fn getDep(self: *Self, step: *Step, deps: json.Value, key: []const u8, local_path: []const u8) !void {
         const dep = try self.parseDep(deps, key);
         defer dep.deinit();
 
@@ -607,8 +606,7 @@ pub const GetV8SourceStep = struct {
         }
     }
 
-    fn runHook(self: *Self, step: *Step, prog_node: *std.Progress.Node, hooks: json.Value, name: []const u8) !void {
-        _ = prog_node;
+    fn runHook(self: *Self, step: *Step, hooks: json.Value, name: []const u8) !void {
         for (hooks.array.items) |hook| {
             if (std.mem.eql(u8, name, hook.object.get("name").?.string)) {
                 const cmd = hook.object.get("action").?.array;
@@ -624,6 +622,7 @@ pub const GetV8SourceStep = struct {
     }
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
 
         // Pull the minimum source we need by looking at DEPS.
@@ -655,7 +654,7 @@ pub const GetV8SourceStep = struct {
         var hooks = root.object.get("hooks").?;
 
         // build
-        try self.getDep(step, prog_node, deps, "build", "v8/build");
+        try self.getDep(step, deps, "build", "v8/build");
 
         // Add an empty gclient_args.gni so gn is happy. gclient also creates an empty file.
         const file = try std.fs.createFileAbsolute(self.b.pathFromRoot("v8/build/config/gclient_args.gni"), .{ .read = false, .truncate = true });
@@ -664,33 +663,33 @@ pub const GetV8SourceStep = struct {
         file.close();
 
         // buildtools
-        try self.getDep(step, prog_node, deps, "buildtools", "v8/buildtools");
+        try self.getDep(step, deps, "buildtools", "v8/buildtools");
 
         // libc++
-        try self.getDep(step, prog_node, deps, "buildtools/third_party/libc++/trunk", "v8/buildtools/third_party/libc++/trunk");
+        try self.getDep(step, deps, "buildtools/third_party/libc++/trunk", "v8/buildtools/third_party/libc++/trunk");
 
         // tools/clang
-        try self.getDep(step, prog_node, deps, "tools/clang", "v8/tools/clang");
+        try self.getDep(step, deps, "tools/clang", "v8/tools/clang");
 
-        try self.runHook(step, prog_node, hooks, "clang");
+        try self.runHook(step, hooks, "clang");
 
         // third_party/zlib
-        try self.getDep(step, prog_node, deps, "third_party/zlib", "v8/third_party/zlib");
+        try self.getDep(step, deps, "third_party/zlib", "v8/third_party/zlib");
 
         // libc++abi
-        try self.getDep(step, prog_node, deps, "buildtools/third_party/libc++abi/trunk", "v8/buildtools/third_party/libc++abi/trunk");
+        try self.getDep(step, deps, "buildtools/third_party/libc++abi/trunk", "v8/buildtools/third_party/libc++abi/trunk");
 
         // googletest
-        try self.getDep(step, prog_node, deps, "third_party/googletest/src", "v8/third_party/googletest/src");
+        try self.getDep(step, deps, "third_party/googletest/src", "v8/third_party/googletest/src");
 
         // trace_event
-        try self.getDep(step, prog_node, deps, "base/trace_event/common", "v8/base/trace_event/common");
+        try self.getDep(step, deps, "base/trace_event/common", "v8/base/trace_event/common");
 
         // jinja2
-        try self.getDep(step, prog_node, deps, "third_party/jinja2", "v8/third_party/jinja2");
+        try self.getDep(step, deps, "third_party/jinja2", "v8/third_party/jinja2");
 
         // markupsafe
-        try self.getDep(step, prog_node, deps, "third_party/markupsafe", "v8/third_party/markupsafe");
+        try self.getDep(step, deps, "third_party/markupsafe", "v8/third_party/markupsafe");
 
         // For windows.
         if (builtin.os.tag == .windows) {
