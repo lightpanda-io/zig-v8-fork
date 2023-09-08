@@ -575,12 +575,12 @@ pub const GetV8SourceStep = struct {
     }
 
     fn parseDep(self: Self, deps: json.Value, key: []const u8) !DepEntry {
-        const val = deps.Object.get(key).?;
+        const val = deps.object.get(key).?;
 
-        const i = std.mem.lastIndexOfScalar(u8, val.String, '@').?;
-        const repo_rev = try self.b.allocator.dupe(u8, val.String[i + 1 ..]);
+        const i = std.mem.lastIndexOfScalar(u8, val.string, '@').?;
+        const repo_rev = try self.b.allocator.dupe(u8, val.string[i + 1 ..]);
 
-        const repo_url = try std.mem.replaceOwned(u8, self.b.allocator, val.String[0..i], "@chromium_url", "https://chromium.googlesource.com");
+        const repo_url = try std.mem.replaceOwned(u8, self.b.allocator, val.string[0..i], "@chromium_url", "https://chromium.googlesource.com");
         return DepEntry{
             .alloc = self.b.allocator,
             .repo_url = repo_url,
@@ -606,13 +606,13 @@ pub const GetV8SourceStep = struct {
     }
 
     fn runHook(self: *Self, hooks: json.Value, name: []const u8) !void {
-        for (hooks.Array.items) |hook| {
-            if (std.mem.eql(u8, name, hook.Object.get("name").?.String)) {
-                const cmd = hook.Object.get("action").?.Array;
+        for (hooks.array.items) |hook| {
+            if (std.mem.eql(u8, name, hook.object.get("name").?.string)) {
+                const cmd = hook.object.get("action").?.array;
                 var args = std.ArrayList([]const u8).init(self.b.allocator);
                 defer args.deinit();
                 for (cmd.items) |it| {
-                    try args.append(it.String);
+                    try args.append(it.string);
                 }
                 const cwd = self.b.pathFromRoot("v8");
                 _ = try self.b.spawnChildEnvMap(cwd, self.b.env_map, args.items);
@@ -642,14 +642,12 @@ pub const GetV8SourceStep = struct {
         const deps_json = try step.evalZigProcess(&.{ "python3", "tools/parse_deps.py", "v8/DEPS" }, prog_node);
         defer self.b.allocator.free(deps_json);
 
-        var p = json.Parser.init(self.b.allocator, false);
-        defer p.deinit();
+        var parsed = try json.parseFromSlice(json.Value, step.owner.allocator, deps_json.?, .{});
+        defer parsed.deinit();
 
-        var tree = try p.parse(deps_json);
-        defer tree.deinit();
-
-        var deps = tree.root.Object.get("deps").?;
-        var hooks = tree.root.Object.get("hooks").?;
+        const root = parsed.value;
+        var deps = root.object.get("deps").?;
+        var hooks = root.object.get("hooks").?;
 
         // build
         try self.getDep(step, prog_node, deps, "build", "v8/build");
