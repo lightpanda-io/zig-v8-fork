@@ -31,7 +31,7 @@ pub fn build(b: *Builder) !void {
     const build_exe = createBuildExeStep(b, path, target, mode, use_zig_tc);
     b.step("exe", "Build exe with main file at -Dpath").dependOn(&build_exe.step);
 
-    const run_exe = build_exe.run();
+    const run_exe = b.addRunArtifact(build_exe);
     b.step("run", "Run with main file at -Dpath").dependOn(&run_exe.step);
 
     b.default_step.dependOn(v8);
