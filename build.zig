@@ -773,9 +773,9 @@ fn statPathFromRoot(b: *Builder, path_rel: []const u8) !PathStat {
 
     const stat = try file.stat();
     switch (stat.kind) {
-        .SymLink => return .SymLink,
-        .Directory => return .Directory,
-        .File => return .File,
+        .sym_link => return .SymLink,
+        .directory => return .Directory,
+        .file => return .File,
         else => return .Unknown,
     }
 }
