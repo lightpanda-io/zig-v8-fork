@@ -326,13 +326,19 @@ const CheckV8DepsStep = struct {
     fn create(b: *Builder) *Self {
         const step = b.allocator.create(Self) catch unreachable;
         step.* = .{
-            .step = Step.init(.custom, "check_v8_deps", b.allocator, make),
+            .step = std.build.Step.init(.{
+                .id = .custom,
+                .name = "check_v8_deps",
+                .makeFn = make,
+                .owner = b,
+            }),
             .b = b,
         };
         return step;
     }
 
-    fn make(step: *Step) !void {
+    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
 
         const output = try self.b.execFromStep(&.{ "clang", "--version" }, step);
@@ -428,14 +434,20 @@ const MakePathStep = struct {
     fn create(b: *Builder, root_path: []const u8) *Self {
         const new = b.allocator.create(Self) catch unreachable;
         new.* = .{
-            .step = std.build.Step.init(.custom, b.fmt("make-path", .{}), b.allocator, make),
+            .step = std.build.Step.init(.{
+                .id = .custom,
+                .name = b.fmt("make-path", .{}),
+                .makeFn = make,
+                .owner = b,
+            }),
             .b = b,
             .path = root_path,
         };
         return new;
     }
 
-    fn make(step: *std.build.Step) anyerror!void {
+    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
         try self.b.makePath(self.path);
     }
@@ -452,7 +464,12 @@ const CopyFileStep = struct {
     fn create(b: *Builder, src_path: []const u8, dst_path: []const u8) *Self {
         const new = b.allocator.create(Self) catch unreachable;
         new.* = .{
-            .step = std.build.Step.init(.custom, b.fmt("cp", .{}), b.allocator, make),
+            .step = std.build.Step.init(.{
+                .id = .custom,
+                .name = b.fmt("cp", .{}),
+                .makeFn = make,
+                .owner = b,
+            }),
             .b = b,
             .src_path = src_path,
             .dst_path = dst_path,
@@ -460,7 +477,8 @@ const CopyFileStep = struct {
         return new;
     }
 
-    fn make(step: *std.build.Step) anyerror!void {
+    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
         try std.fs.copyFileAbsolute(self.src_path, self.dst_path, .{});
     }
@@ -547,7 +565,12 @@ pub const GetV8SourceStep = struct {
         const self = b.allocator.create(Self) catch unreachable;
         self.* = .{
             .b = b,
-            .step = Step.init(.run, "Get V8 Sources.", b.allocator, make),
+            .step = std.build.Step.init(.{
+                .id = .run,
+                .name = "Get V8 Sources.",
+                .makeFn = make,
+                .owner = b,
+            }),
         };
         return self;
     }
@@ -599,7 +622,8 @@ pub const GetV8SourceStep = struct {
         }
     }
 
-    fn make(step: *Step) !void {
+    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+        _ = prog_node;
         const self = @fieldParentPtr(Self, "step", step);
 
         // Pull the minimum source we need by looking at DEPS.
