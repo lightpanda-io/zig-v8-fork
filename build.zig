@@ -719,16 +719,12 @@ fn createBuildExeStep(b: *Builder, path: []const u8, target: std.zig.CrossTarget
     const i = std.mem.indexOf(u8, basename, ".zig") orelse basename.len;
     const name = basename[0..i];
 
-    const output_dir_rel = std.fmt.allocPrint(b.allocator, "zig-out/{s}", .{name}) catch unreachable;
-    const output_dir = b.pathFromRoot(output_dir_rel);
-
     const step = b.addExecutable(.{
         .name = name,
         .root_source_file = .{ .path = path },
         .optimize = mode,
         .target = target,
         .link_libc = true,
-        .output_dir = output_dir,
     });
     step.addIncludePath(.{ .path = "src" });
 
