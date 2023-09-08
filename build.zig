@@ -486,7 +486,7 @@ const CopyFileStep = struct {
 
 // TODO: Make this usable from external project.
 fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
-    const mode = step.build_mode;
+    const mode = step.optimize;
     const target = step.target;
 
     const mode_str: []const u8 = if (mode == .Debug) "debug" else "release";
@@ -496,7 +496,7 @@ fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
         mode_str,
         lib,
     }) catch unreachable;
-    step.addAssemblyFile(lib_path);
+    step.addAssemblyFile(.{ .path = lib_path });
     if (builtin.os.tag == .linux) {
         if (use_zig_tc) {
             // TODO: This should be linked already when we built v8.
@@ -521,12 +521,14 @@ fn linkV8(b: *Builder, step: *std.build.LibExeObjStep, use_zig_tc: bool) void {
 }
 
 fn createTest(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) *std.build.LibExeObjStep {
-    const step = b.addTest("./test/test.zig");
-    step.setMainPkgPath(".");
-    step.addIncludePath("./src");
-    step.setTarget(target);
-    step.setBuildMode(mode);
-    step.linkLibC();
+    const step = b.addTest(.{
+        .root_source_file = .{ .path = "./test/test.zig" },
+        .main_pkg_path = .{ .path = "." },
+        .target = target,
+        .optimize = mode,
+        .link_libc = true,
+    });
+    step.addIncludePath(.{ .path = "./src" });
     linkV8(b, step, use_zig_tc);
     return step;
 }
