@@ -338,7 +338,8 @@ const CheckV8DepsStep = struct {
     }
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
-        const output = try step.evalZigProcess(&.{ "clang", "--version" }, prog_node);
+        _ = prog_node;
+        const output = try step.evalChildProcess(&.{ "clang", "--version" });
         print("clang: {s}", .{output});
 
         // TODO: Find out the actual minimum and check against other clang flavors.
@@ -589,18 +590,19 @@ pub const GetV8SourceStep = struct {
     }
 
     fn getDep(self: *Self, step: *Step, prog_node: *std.Progress.Node, deps: json.Value, key: []const u8, local_path: []const u8) !void {
+        _ = prog_node;
         const dep = try self.parseDep(deps, key);
         defer dep.deinit();
 
         const stat = try statPathFromRoot(step.owner, local_path);
         if (stat == .NotExist) {
-            _ = try step.evalZigProcess(&.{ "git", "clone", dep.repo_url, local_path }, prog_node);
+            _ = try step.evalChildProcess(&.{ "git", "clone", dep.repo_url, local_path });
         }
-        _ = try step.evalZigProcess(&.{ "git", "-C", local_path, "checkout", dep.repo_rev }, prog_node);
+        _ = try step.evalChildProcess(&.{ "git", "-C", local_path, "checkout", dep.repo_rev });
         if (stat == .NotExist) {
             // Apply patch for v8/build
             if (std.mem.eql(u8, key, "build")) {
-                _ = try step.evalZigProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" }, prog_node);
+                _ = try step.evalChildProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" });
             }
         }
     }
@@ -633,16 +635,19 @@ pub const GetV8SourceStep = struct {
         // Clone V8.
         const stat = try statPathFromRoot(self.b, "v8");
         if (stat == .NotExist) {
-            _ = try step.evalZigProcess(&.{ "git", "clone", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" }, prog_node);
+            _ = try step.evalChildProcess(&.{ "git", "clone", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" });
             // Apply patch for v8 root.
-            _ = try step.evalZigProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" }, prog_node);
+            _ = try step.evalChildProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" });
         }
 
         // Get DEPS in json.
-        const deps_json = try step.evalZigProcess(&.{ "python3", "tools/parse_deps.py", "v8/DEPS" }, prog_node);
-        defer self.b.allocator.free(deps_json);
+        const argv = &.{ "python3", "tools/parse_deps.py", "v8/DEPS" };
+        const result = std.ChildProcess.exec(.{
+            .allocator = step.owner.allocator,
+            .argv = argv,
+        }) catch |err| return step.fail("unable to spawn {s}: {s}", .{ argv[0], @errorName(err) });
 
-        var parsed = try json.parseFromSlice(json.Value, step.owner.allocator, deps_json.?, .{});
+        var parsed = try json.parseFromSlice(json.Value, step.owner.allocator, result.stdout, .{});
         defer parsed.deinit();
 
         const root = parsed.value;
@@ -696,7 +701,7 @@ pub const GetV8SourceStep = struct {
             const merge_base_sha = "HEAD";
             const commit_filter = "^Change-Id:";
             const grep_arg = try std.fmt.allocPrint(self.b.allocator, "--grep={s}", .{commit_filter});
-            const version_info = try step.evalZigProcess(&.{ "git", "-C", "v8/build", "log", "-1", "--format=%H %ct", grep_arg, merge_base_sha }, prog_node);
+            const version_info = try step.evalChildProcess(&.{ "git", "-C", "v8/build", "log", "-1", "--format=%H %ct", grep_arg, merge_base_sha });
             const idx = std.mem.indexOfScalar(u8, version_info, ' ').?;
             const commit_timestamp = version_info[idx + 1 ..];
 
