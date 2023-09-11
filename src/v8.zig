@@ -83,7 +83,7 @@ pub const Platform = struct {
     /// calling v8::platform::RunIdleTasks to process the idle tasks.
     pub fn initDefault(thread_pool_size: u32, idle_task_support: bool) Self {
         return .{
-            .handle = c.v8__Platform__NewDefaultPlatform(@intCast(c_int, thread_pool_size), if (idle_task_support) 1 else 0).?,
+            .handle = c.v8__Platform__NewDefaultPlatform(@as(c_int, @intCast(thread_pool_size)), if (idle_task_support) 1 else 0).?,
         };
     }
 
@@ -214,7 +214,7 @@ pub const Isolate = struct {
     handle: *c.Isolate,
 
     pub fn init(params: *const c.CreateParams) Self {
-        const ptr = @intToPtr(*c.CreateParams, @ptrToInt(params));
+        const ptr = @as(*c.CreateParams, @ptrFromInt(@intFromPtr(params)));
         return .{
             .handle = c.v8__Isolate__New(ptr).?,
         };
@@ -293,7 +293,7 @@ pub const Isolate = struct {
     /// Tells V8 to capture current stack trace when uncaught exception occurs
     /// and report it to the message listeners. The option is off by default.
     pub fn setCaptureStackTraceForUncaughtExceptions(self: Self, capture: bool, frame_limit: u32) void {
-        c.v8__Isolate__SetCaptureStackTraceForUncaughtExceptions(self.handle, capture, @intCast(c_int, frame_limit));
+        c.v8__Isolate__SetCaptureStackTraceForUncaughtExceptions(self.handle, capture, @as(c_int, @intCast(frame_limit)));
     }
 
     /// This does not terminate the current script immediately. V8 will mark it for termination at a later time. This was intended to end long running loops.
@@ -492,12 +492,12 @@ pub const Context = struct {
 
     pub fn getEmbedderData(self: Self, idx: u32) Value {
         return .{
-            .handle = c.v8__Context__GetEmbedderData(self.handle, @intCast(c_int, idx)).?,
+            .handle = c.v8__Context__GetEmbedderData(self.handle, @as(c_int, @intCast(idx))).?,
         };
     }
 
     pub fn setEmbedderData(self: Self, idx: u32, val: anytype) void {
-        c.v8__Context__SetEmbedderData(self.handle, @intCast(c_int, idx), getValueHandle(val));
+        c.v8__Context__SetEmbedderData(self.handle, @as(c_int, @intCast(idx)), getValueHandle(val));
     }
 };
 
@@ -565,7 +565,7 @@ pub const WeakCallbackInfo = struct {
     }
 
     pub fn getInternalField(self: Self, idx: u32) ?*anyopaque {
-        return c.v8__WeakCallbackInfo__GetInternalField(self.handle, @intCast(c_int, idx));
+        return c.v8__WeakCallbackInfo__GetInternalField(self.handle, @as(c_int, @intCast(idx)));
     }
 };
 
@@ -609,7 +609,7 @@ pub const FunctionCallbackInfo = struct {
     }
 
     pub fn length(self: Self) u32 {
-        return @intCast(u32, c.v8__FunctionCallbackInfo__Length(self.handle));
+        return @as(u32, @intCast(c.v8__FunctionCallbackInfo__Length(self.handle)));
     }
 
     pub fn getIsolate(self: Self) Isolate {
@@ -620,7 +620,7 @@ pub const FunctionCallbackInfo = struct {
 
     pub fn getArg(self: Self, i: u32) Value {
         return .{
-            .handle = c.v8__FunctionCallbackInfo__INDEX(self.handle, @intCast(c_int, i)).?,
+            .handle = c.v8__FunctionCallbackInfo__INDEX(self.handle, @as(c_int, @intCast(i))).?,
         };
     }
 
@@ -761,8 +761,8 @@ pub const Function = struct {
     /// receiver_val is "this" in the function context. This is equivalent to calling fn.apply(receiver, args) in JS.
     /// Returns null if there was an error.
     pub fn call(self: Self, ctx: Context, receiver_val: anytype, args: []const Value) ?Value {
-        const c_args = @ptrCast(?[*]const ?*c.Value, args.ptr);
-        if (c.v8__Function__Call(self.handle, ctx.handle, getValueHandle(receiver_val), @intCast(c_int, args.len), c_args)) |ret| {
+        const c_args = @as(?[*]const ?*c.Value, @ptrCast(args.ptr));
+        if (c.v8__Function__Call(self.handle, ctx.handle, getValueHandle(receiver_val), @as(c_int, @intCast(args.len)), c_args)) |ret| {
             return Value{
                 .handle = ret,
             };
@@ -771,8 +771,8 @@ pub const Function = struct {
 
     // Equavalent to js "new".
     pub fn initInstance(self: Self, ctx: Context, args: []const Value) ?Object {
-        const c_args = @ptrCast(?[*]const ?*c.Value, args.ptr);
-        if (c.v8__Function__NewInstance(self.handle, ctx.handle, @intCast(c_int, args.len), c_args)) |ret| {
+        const c_args = @as(?[*]const ?*c.Value, @ptrCast(args.ptr));
+        if (c.v8__Function__NewInstance(self.handle, ctx.handle, @as(c_int, @intCast(args.len)), c_args)) |ret| {
             return Object{
                 .handle = ret,
             };
@@ -781,7 +781,7 @@ pub const Function = struct {
 
     pub fn toObject(self: Self) Object {
         return .{
-            .handle = @ptrCast(*const c.Object, self.handle),
+            .handle = @as(*const c.Object, @ptrCast(self.handle)),
         };
     }
 
@@ -813,47 +813,47 @@ pub fn Persistent(comptime T: type) type {
         /// but when creating and operating on it, an indirect pointer is used to represent a c.Persistent struct (v8::Persistent<v8::Value> in C++).
         pub fn init(isolate: Isolate, data: T) Self {
             var handle: *c.Data = undefined;
-            c.v8__Persistent__New(isolate.handle, getDataHandle(data), @ptrCast(*c.Persistent, &handle));
+            c.v8__Persistent__New(isolate.handle, getDataHandle(data), @as(*c.Persistent, @ptrCast(&handle)));
             return .{
                 .inner = .{
-                    .handle = @ptrCast(@TypeOf(data.handle), handle),
+                    .handle = @as(@TypeOf(data.handle), @ptrCast(handle)),
                 },
             };
         }
 
         pub fn deinit(self: *Self) void {
-            c.v8__Persistent__Reset(@ptrCast(*c.Persistent, &self.inner.handle));
+            c.v8__Persistent__Reset(@as(*c.Persistent, @ptrCast(&self.inner.handle)));
         }
 
         pub fn setWeak(self: *Self) void {
-            c.v8__Persistent__SetWeak(@ptrCast(*c.Persistent, &self.inner.handle));
+            c.v8__Persistent__SetWeak(@as(*c.Persistent, @ptrCast(&self.inner.handle)));
         }
 
         /// An external pointer can be set when cb_type is kParameter or kInternalFields.
         /// When cb_type is kInternalFields, the object fields are expected to be set with setAlignedPointerInInternalField.
         /// The pointer value must be a multiple of 2 due to how v8 encodes the pointers.
         pub fn setWeakFinalizer(self: *Self, finalizer_ctx: *anyopaque, cb: c.WeakCallback, cb_type: WeakCallbackType) void {
-            c.v8__Persistent__SetWeakFinalizer(@ptrCast(*c.Persistent, &self.inner.handle), finalizer_ctx, cb, @enumToInt(cb_type));
+            c.v8__Persistent__SetWeakFinalizer(@as(*c.Persistent, @ptrCast(&self.inner.handle)), finalizer_ctx, cb, @intFromEnum(cb_type));
         }
 
         /// Should only be called if you know the underlying type is a v8.Function.
         pub fn castToFunction(self: Self) Function {
             return .{
-                .handle = @ptrCast(*const c.Function, self.inner.handle),
+                .handle = @as(*const c.Function, @ptrCast(self.inner.handle)),
             };
         }
 
         /// Should only be called if you know the underlying type is a v8.Object.
         pub fn castToObject(self: Self) Object {
             return .{
-                .handle = @ptrCast(*const c.Object, self.inner.handle),
+                .handle = @as(*const c.Object, @ptrCast(self.inner.handle)),
             };
         }
 
         /// Should only be called if you know the underlying type is a v8.PromiseResolver.
         pub fn castToPromiseResolver(self: Self) PromiseResolver {
             return .{
-                .handle = @ptrCast(*const c.PromiseResolver, self.inner.handle),
+                .handle = @as(*const c.PromiseResolver, @ptrCast(self.inner.handle)),
             };
         }
 
@@ -913,7 +913,7 @@ pub const ObjectTemplate = struct {
     }
 
     pub fn setInternalFieldCount(self: Self, count: u32) void {
-        c.v8__ObjectTemplate__SetInternalFieldCount(self.handle, @intCast(c_int, count));
+        c.v8__ObjectTemplate__SetInternalFieldCount(self.handle, @as(c_int, @intCast(count)));
     }
 
     pub fn toValue(self: Self) Value {
@@ -930,12 +930,12 @@ pub const Array = struct {
 
     pub fn init(iso: Isolate, len: u32) Self {
         return .{
-            .handle = c.v8__Array__New(iso.handle, @intCast(c_int, len)).?,
+            .handle = c.v8__Array__New(iso.handle, @as(c_int, @intCast(len))).?,
         };
     }
 
     pub fn initElements(iso: Isolate, elems: []const Value) Self {
-        const c_elems = @ptrCast(?[*]const ?*c.Value, elems.ptr);
+        const c_elems = @as(?[*]const ?*c.Value, @ptrCast(elems.ptr));
         return .{
             .handle = c.v8__Array__New2(iso.handle, c_elems, elems.len).?,
         };
@@ -949,7 +949,7 @@ pub const Array = struct {
         switch (T) {
             Object => {
                 return .{
-                    .handle = @ptrCast(*const c.Object, self.handle),
+                    .handle = @as(*const c.Object, @ptrCast(self.handle)),
                 };
             },
             else => unreachable,
@@ -969,17 +969,17 @@ pub const Object = struct {
     }
 
     pub fn setInternalField(self: Self, idx: u32, value: anytype) void {
-        c.v8__Object__SetInternalField(self.handle, @intCast(c_int, idx), getValueHandle(value));
+        c.v8__Object__SetInternalField(self.handle, @as(c_int, @intCast(idx)), getValueHandle(value));
     }
 
     pub fn getInternalField(self: Self, idx: u32) Value {
         return .{
-            .handle = c.v8__Object__GetInternalField(self.handle, @intCast(c_int, idx)).?,
+            .handle = c.v8__Object__GetInternalField(self.handle, @as(c_int, @intCast(idx))).?,
         };
     }
 
     pub fn setAlignedPointerInInternalField(self: Self, idx: u32, ptr: ?*anyopaque) void {
-        c.v8__Object__SetAlignedPointerInInternalField(self.handle, @intCast(c_int, idx), ptr);
+        c.v8__Object__SetAlignedPointerInInternalField(self.handle, @as(c_int, @intCast(idx)), ptr);
     }
 
     // Returns true on success, false on fail.
@@ -1033,7 +1033,7 @@ pub const Object = struct {
     }
 
     pub fn getIdentityHash(self: Self) u32 {
-        return @bitCast(u32, c.v8__Object__GetIdentityHash(self.handle));
+        return @as(u32, @bitCast(c.v8__Object__GetIdentityHash(self.handle)));
     }
 
     pub fn has(self: Self, ctx: Context, key: Value) bool {
@@ -1106,7 +1106,7 @@ pub const Symbol = struct {
 
     pub fn toName(self: Self) Name {
         return .{
-            .handle = @ptrCast(*const c.Name, self.handle),
+            .handle = @as(*const c.Name, @ptrCast(self.handle)),
         };
     }
 
@@ -1191,11 +1191,11 @@ pub const Number = struct {
     }
 
     pub fn initBitCastedI64(isolate: Isolate, val: i64) Self {
-        return init(isolate, @bitCast(f64, val));
+        return init(isolate, @as(f64, @bitCast(val)));
     }
 
     pub fn initBitCastedU64(isolate: Isolate, val: u64) Self {
-        return init(isolate, @bitCast(f64, val));
+        return init(isolate, @as(f64, @bitCast(val)));
     }
 
     pub fn toValue(self: Self) Value {
@@ -1227,7 +1227,7 @@ pub const Integer = struct {
     }
 
     pub fn getValueU32(self: Self) u32 {
-        return @intCast(u32, c.v8__Integer__Value(self.handle));
+        return @as(u32, @intCast(c.v8__Integer__Value(self.handle)));
     }
 
     pub fn toValue(self: Self) Value {
@@ -1270,7 +1270,7 @@ pub inline fn getValue(val: anytype) Value {
 }
 
 inline fn getValueHandle(val: anytype) *const c.Value {
-    return @ptrCast(*const c.Value, comptime switch (@TypeOf(val)) {
+    return @as(*const c.Value, @ptrCast(comptime switch (@TypeOf(val)) {
         Object => val.handle,
         Value => val.handle,
         String => val.handle,
@@ -1295,19 +1295,19 @@ inline fn getValueHandle(val: anytype) *const c.Value {
         Persistent(PromiseResolver) => val.inner.handle,
         Persistent(Array) => val.inner.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Value", .{@typeName(@TypeOf(val))})),
-    });
+    }));
 }
 
 inline fn getTemplateHandle(val: anytype) *const c.Template {
-    return @ptrCast(*const c.Template, comptime switch (@TypeOf(val)) {
+    return @as(*const c.Template, @ptrCast(comptime switch (@TypeOf(val)) {
         FunctionTemplate => val.handle,
         ObjectTemplate => val.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Template", .{@typeName(@TypeOf(val))})),
-    });
+    }));
 }
 
 inline fn getDataHandle(val: anytype) *const c.Data {
-    return @ptrCast(*const c.Data, comptime switch (@TypeOf(val)) {
+    return @as(*const c.Data, @ptrCast(comptime switch (@TypeOf(val)) {
         FunctionTemplate => val.handle,
         ObjectTemplate => val.handle,
         Integer => val.handle,
@@ -1319,7 +1319,7 @@ inline fn getDataHandle(val: anytype) *const c.Data {
         Promise => val.handle,
         PromiseResolver => val.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Data", .{@typeName(@TypeOf(val))})),
-    });
+    }));
 }
 
 pub const Message = struct {
@@ -1350,21 +1350,21 @@ pub const Message = struct {
     pub fn getLineNumber(self: Self, ctx: Context) ?u32 {
         const res = c.v8__Message__GetLineNumber(self.handle, ctx.handle);
         if (res != -1) {
-            return @intCast(u32, res);
+            return @as(u32, @intCast(res));
         } else return null;
     }
 
     pub fn getStartColumn(self: Self) ?u32 {
         const res = c.v8__Message__GetStartColumn(self.handle);
         if (res != -1) {
-            return @intCast(u32, res);
+            return @as(u32, @intCast(res));
         } else return null;
     }
 
     pub fn getEndColumn(self: Self) ?u32 {
         const res = c.v8__Message__GetEndColumn(self.handle);
         if (res != -1) {
-            return @intCast(u32, res);
+            return @as(u32, @intCast(res));
         } else return null;
     }
 
@@ -1386,7 +1386,7 @@ pub const StackTrace = struct {
     handle: *const c.StackTrace,
 
     pub fn getFrameCount(self: Self) u32 {
-        return @intCast(u32, c.v8__StackTrace__GetFrameCount(self.handle));
+        return @as(u32, @intCast(c.v8__StackTrace__GetFrameCount(self.handle)));
     }
 
     pub fn getFrame(self: Self, iso: Isolate, idx: u32) StackFrame {
@@ -1397,7 +1397,7 @@ pub const StackTrace = struct {
 
     pub fn getCurrentStackTrace(iso: Isolate, frame_limit: u32) StackTrace {
         return .{
-            .handle = c.v8__StackTrace__CurrentStackTrace__STATIC(iso.handle, @intCast(c_int, frame_limit)).?,
+            .handle = c.v8__StackTrace__CurrentStackTrace__STATIC(iso.handle, @as(c_int, @intCast(frame_limit))).?,
         };
     }
 
@@ -1414,15 +1414,15 @@ pub const StackFrame = struct {
     handle: *const c.StackFrame,
 
     pub fn getLineNumber(self: Self) u32 {
-        return @intCast(u32, c.v8__StackFrame__GetLineNumber(self.handle));
+        return @as(u32, @intCast(c.v8__StackFrame__GetLineNumber(self.handle)));
     }
 
     pub fn getColumn(self: Self) u32 {
-        return @intCast(u32, c.v8__StackFrame__GetColumn(self.handle));
+        return @as(u32, @intCast(c.v8__StackFrame__GetColumn(self.handle)));
     }
 
     pub fn getScriptId(self: Self) u32 {
-        return @intCast(u32, c.v8__StackFrame__GetScriptId(self.handle));
+        return @as(u32, @intCast(c.v8__StackFrame__GetScriptId(self.handle)));
     }
 
     pub fn getScriptName(self: Self) String {
@@ -1585,12 +1585,12 @@ pub const String = struct {
 
     pub fn initUtf8(isolate: Isolate, str: []const u8) Self {
         return .{
-            .handle = c.v8__String__NewFromUtf8(isolate.handle, str.ptr, c.kNormal, @intCast(c_int, str.len)).?,
+            .handle = c.v8__String__NewFromUtf8(isolate.handle, str.ptr, c.kNormal, @as(c_int, @intCast(str.len))).?,
         };
     }
 
     pub fn lenUtf8(self: Self, isolate: Isolate) u32 {
-        return @intCast(u32, c.v8__String__Utf8Length(self.handle, isolate.handle));
+        return @as(u32, @intCast(c.v8__String__Utf8Length(self.handle, isolate.handle)));
     }
 
     pub fn writeUtf8(self: String, isolate: Isolate, buf: []const u8) u32 {
@@ -1598,7 +1598,7 @@ pub const String = struct {
         // num chars is how many utf8 characters are actually written and the function returns how many bytes were written.
         var nchars: c_int = 0;
         // TODO: Return num chars
-        return @intCast(u32, c.v8__String__WriteUtf8(self.handle, isolate.handle, buf.ptr, @intCast(c_int, buf.len), &nchars, options));
+        return @as(u32, @intCast(c.v8__String__WriteUtf8(self.handle, isolate.handle, buf.ptr, @as(c_int, @intCast(buf.len)), &nchars, options)));
     }
 
     pub fn toValue(self: Self) Value {
@@ -1609,7 +1609,7 @@ pub const String = struct {
 
     pub fn toName(self: Self) Name {
         return .{
-            .handle = @ptrCast(*const c.Name, self.handle),
+            .handle = @as(*const c.Name, @ptrCast(self.handle)),
         };
     }
 };
@@ -1640,7 +1640,7 @@ pub const ScriptCompilerCachedData = struct {
 
     pub fn init(data: []const u8) Self {
         return .{
-            .handle = c.v8__ScriptCompiler__CachedData__NEW(data.ptr, @intCast(c_int, data.len)).?,
+            .handle = c.v8__ScriptCompiler__CachedData__NEW(data.ptr, @as(c_int, @intCast(data.len))).?,
         };
     }
 
@@ -1681,8 +1681,8 @@ pub const ScriptCompiler = struct {
         const mb_res = c.v8__ScriptCompiler__CompileModule(
             iso.handle,
             &src.inner,
-            @enumToInt(options),
-            @enumToInt(reason),
+            @intFromEnum(options),
+            @intFromEnum(reason),
         );
         if (mb_res) |res| {
             return Module{
@@ -1731,7 +1731,7 @@ pub const Module = struct {
     handle: *const c.Module,
 
     pub fn getStatus(self: Self) Status {
-        return @intToEnum(Status, c.v8__Module__GetStatus(self.handle));
+        return @as(Status, @enumFromInt(c.v8__Module__GetStatus(self.handle)));
     }
 
     pub fn getException(self: Self) Value {
@@ -1779,11 +1779,11 @@ pub const Module = struct {
     }
 
     pub fn getIdentityHash(self: Self) u32 {
-        return @bitCast(u32, c.v8__Module__GetIdentityHash(self.handle));
+        return @as(u32, @bitCast(c.v8__Module__GetIdentityHash(self.handle)));
     }
 
     pub fn getScriptId(self: Self) u32 {
-        return @intCast(u32, c.v8__Module__ScriptId(self.handle));
+        return @as(u32, @intCast(c.v8__Module__ScriptId(self.handle)));
     }
 };
 
@@ -1801,7 +1801,7 @@ pub const ModuleRequest = struct {
 
     /// Returns the offset from the start of the source code.
     pub fn getSourceOffset(self: Self) u32 {
-        return @intCast(u32, c.v8__ModuleRequest__GetSourceOffset(self.handle));
+        return @as(u32, @intCast(c.v8__ModuleRequest__GetSourceOffset(self.handle)));
     }
 };
 
@@ -1864,7 +1864,7 @@ pub const Value = struct {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
         if (out.has_value) {
-            return @floatCast(f32, out.value);
+            return @as(f32, @floatCast(out.value));
         } else return error.JsException;
     }
 
@@ -1880,7 +1880,7 @@ pub const Value = struct {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
         if (out.has_value) {
-            return @bitCast(i64, out.value);
+            return @as(i64, @bitCast(out.value));
         } else return error.JsException;
     }
 
@@ -1888,7 +1888,7 @@ pub const Value = struct {
         var out: c.MaybeF64 = undefined;
         c.v8__Value__NumberValue(self.handle, ctx.handle, &out);
         if (out.has_value) {
-            return @bitCast(u64, out.value);
+            return @as(u64, @bitCast(out.value));
         } else return error.JsException;
     }
 
@@ -2064,7 +2064,7 @@ pub const Promise = struct {
     }
 
     pub fn getState(self: Self) State {
-        return @intToEnum(State, c.v8__Promise__State(self.handle));
+        return @as(State, @enumFromInt(c.v8__Promise__State(self.handle)));
     }
 
     /// [V8]
@@ -2075,7 +2075,7 @@ pub const Promise = struct {
 
     pub fn toObject(self: Self) Object {
         return .{
-            .handle = @ptrCast(*const c.Object, self.handle),
+            .handle = @as(*const c.Object, @ptrCast(self.handle)),
         };
     }
 
@@ -2164,7 +2164,7 @@ pub const BackingStore = struct {
     }
 
     pub fn sharedPtrUseCount(ptr: *const SharedPtr) u32 {
-        return @intCast(u32, c.std__shared_ptr__v8__BackingStore__use_count(ptr));
+        return @as(u32, @intCast(c.std__shared_ptr__v8__BackingStore__use_count(ptr)));
     }
 };
 
@@ -2204,7 +2204,7 @@ pub const ArrayBufferView = struct {
     pub fn castFrom(val: anytype) Self {
         switch (@TypeOf(val)) {
             Uint8Array => return .{
-                .handle = @ptrCast(*const c.ArrayBufferView, val.handle),
+                .handle = @as(*const c.ArrayBufferView, @ptrCast(val.handle)),
             },
             else => unreachable,
         }
@@ -2217,12 +2217,12 @@ pub const FixedArray = struct {
     handle: *const c.FixedArray,
 
     pub fn length(self: Self) u32 {
-        return @intCast(u32, c.v8__FixedArray__Length(self.handle));
+        return @as(u32, @intCast(c.v8__FixedArray__Length(self.handle)));
     }
 
     pub fn get(self: Self, ctx: Context, idx: u32) Data {
         return .{
-            .handle = c.v8__FixedArray__Get(self.handle, ctx.handle, @intCast(c_int, idx)).?,
+            .handle = c.v8__FixedArray__Get(self.handle, ctx.handle, @as(c_int, @intCast(idx))).?,
         };
     }
 };
@@ -2256,9 +2256,9 @@ pub const Json = struct {
 inline fn ptrCastAlign(comptime Ptr: type, ptr: anytype) Ptr {
     const alignment = @typeInfo(Ptr).Pointer.alignment;
     if (alignment == 0) {
-        return @ptrCast(Ptr, ptr);
+        return @as(Ptr, @ptrCast(ptr));
     } else {
-        return @ptrCast(Ptr, @alignCast(alignment, ptr));
+        return @as(Ptr, @ptrCast(@alignCast(alignment, ptr)));
     }
 }
 
