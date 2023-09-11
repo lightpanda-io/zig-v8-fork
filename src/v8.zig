@@ -2258,7 +2258,7 @@ inline fn ptrCastAlign(comptime Ptr: type, ptr: anytype) Ptr {
     if (alignment == 0) {
         return @as(Ptr, @ptrCast(ptr));
     } else {
-        return @as(Ptr, @ptrCast(@alignCast(alignment, ptr)));
+        return @as(Ptr, @ptrCast(@as(alignment, @alignCast(ptr))));
     }
 }
 
