@@ -25,7 +25,8 @@ pub fn build(b: *Builder) !void {
     const v8 = try createV8_Build(b, target, mode, use_zig_tc);
     b.step("v8", "Build v8 c binding lib.").dependOn(v8);
 
-    const run_test = createTest(b, target, mode, use_zig_tc);
+    const create_test = createTest(b, target, mode, use_zig_tc);
+    const run_test = b.addRunArtifact(create_test);
     b.step("test", "Run tests.").dependOn(&run_test.step);
 
     const build_exe = createCompileStep(b, path, target, mode, use_zig_tc);
