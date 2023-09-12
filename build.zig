@@ -376,7 +376,7 @@ fn createGetTools(b: *Builder) *std.build.Step {
 
     if (UseGclient) {
         // Pull depot_tools for fetch tool.
-        sub_step = b.addSystemCommand(&.{ "git", "clone", "--depth=1", "https://chromium.googlesource.com/chromium/tools/depot_tools.git", "tools/depot_tools" });
+        sub_step = b.addSystemCommand(&.{ "git", "clone", "--quiet", "--depth=1", "https://chromium.googlesource.com/chromium/tools/depot_tools.git", "tools/depot_tools" });
         step.dependOn(&sub_step.step);
     }
 
@@ -592,13 +592,13 @@ pub const GetV8SourceStep = struct {
 
         const stat = try statPathFromRoot(step.owner, local_path);
         if (stat == .NotExist) {
-            _ = try step.evalChildProcess(&.{ "git", "clone", dep.repo_url, local_path });
+            _ = try step.evalChildProcess(&.{ "git", "clone", "--quiet", dep.repo_url, local_path });
         }
-        _ = try step.evalChildProcess(&.{ "git", "-C", local_path, "checkout", dep.repo_rev });
+        _ = try step.evalChildProcess(&.{ "git", "-C", local_path, "checkout", "--quiet", dep.repo_rev });
         if (stat == .NotExist) {
             // Apply patch for v8/build
             if (std.mem.eql(u8, key, "build")) {
-                _ = try step.evalChildProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" });
+                _ = try step.evalChildProcess(&.{ "git", "apply", "--quiet", "--ignore-space-change", "--ignore-whitespace", "patches/v8_build.patch", "--directory=v8/build" });
             }
         }
     }
@@ -655,9 +655,9 @@ pub const GetV8SourceStep = struct {
         // Clone V8.
         const stat = try statPathFromRoot(self.b, "v8");
         if (stat == .NotExist) {
-            _ = try step.evalChildProcess(&.{ "git", "clone", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" });
+            _ = try step.evalChildProcess(&.{ "git", "clone", "--quiet", "--depth=1", "--branch", v8_rev, "https://chromium.googlesource.com/v8/v8.git", "v8" });
             // Apply patch for v8 root.
-            _ = try step.evalChildProcess(&.{ "git", "apply", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" });
+            _ = try step.evalChildProcess(&.{ "git", "apply", "--quiet", "--ignore-space-change", "--ignore-whitespace", "patches/v8.patch", "--directory=v8" });
         }
 
         // Get DEPS in json.
