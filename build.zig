@@ -16,14 +16,10 @@ pub fn build(b: *Builder) !void {
     const mode = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
-    const get_tools = createGetTools(b);
-    b.step("get-tools", "Gets the build tools.").dependOn(get_tools);
-
-    const get_v8 = createGetV8(b);
-    b.step("get-v8", "Gets v8 source using gclient.").dependOn(get_v8);
+    _ = createGetTools(b);
+    _ = createGetV8(b);
 
     const v8 = try createV8_Build(b, target, mode, use_zig_tc);
-    b.step("v8", "Build v8 c binding lib.").dependOn(v8);
 
     const create_test = createTest(b, target, mode, use_zig_tc);
     const run_test = b.addRunArtifact(create_test);
@@ -50,7 +46,7 @@ const UseGclient = false;
 // It would be nice if there was a way to import .gn files into the zig build system.
 // For now we just use gn/ninja like rusty_v8 does: https://github.com/denoland/rusty_v8/blob/main/build.rs
 fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) !*std.build.Step {
-    const step = b.step("Built V8", "");
+    const step = b.step("v8", "Build v8 c binding lib.");
 
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient/v8/zig");
@@ -355,7 +351,7 @@ const CheckV8DepsStep = struct {
 };
 
 fn createGetV8(b: *Builder) *std.build.Step {
-    const step = b.step("Get V8", "");
+    const step = b.step("get-v8", "Gets v8 source using gclient.");
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient");
         step.dependOn(&mkpath.step);
@@ -373,7 +369,7 @@ fn createGetV8(b: *Builder) *std.build.Step {
 }
 
 fn createGetTools(b: *Builder) *std.build.Step {
-    const step = b.step("Get Tools", "");
+    const step = b.step("get-tools", "Gets the build tools.");
 
     var sub_step = b.addSystemCommand(&.{ "python3", "./tools/get_ninja_gn_binaries.py", "--dir", "./tools" });
     step.dependOn(&sub_step.step);
