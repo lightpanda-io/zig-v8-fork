@@ -509,7 +509,7 @@ fn linkV8(b: *Builder, step: *std.build.CompileStep, use_zig_tc: bool) void {
             // We need libcpmt to statically link with c++ stl for exception_ptr references from V8.
             // Zig already adds the SDK path to the linker but doesn't sync it to the internal libs array which linkSystemLibrary checks against.
             // For now we'll hardcode the MSVC path here.
-            step.addLibraryPath("C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64");
+            step.addLibraryPath(.{ .cwd_relative = "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64" });
             step.linkSystemLibrary("libcpmt");
         }
     }
