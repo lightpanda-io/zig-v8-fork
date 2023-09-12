@@ -604,15 +604,39 @@ pub const GetV8SourceStep = struct {
     }
 
     fn runHook(self: *Self, step: *Step, hooks: json.Value, name: []const u8) !void {
+        const arena = step.owner.allocator;
+        const cwd = self.b.pathFromRoot("v8");
+
         for (hooks.array.items) |hook| {
             if (std.mem.eql(u8, name, hook.object.get("name").?.string)) {
                 const cmd = hook.object.get("action").?.array;
-                var args = std.ArrayList([]const u8).init(self.b.allocator);
+                var args = std.ArrayList([]const u8).init(arena);
                 defer args.deinit();
                 for (cmd.items) |it| {
                     try args.append(it.string);
                 }
-                try step.evalChildProcess(args.items);
+
+                // Instead of using `step.evalChildProcess`, we had to inline
+                // its content.
+                // We want to change the cwd to run the hook inside v8/ subdir.
+                // TODO find a better way to handle cwd with subprocess.
+                // try step.evalChildProcess(args.items);
+
+                try step.handleChildProcUnsupported(cwd, args.items);
+                try Step.handleVerbose(step.owner, cwd, args.items);
+
+                const result = std.ChildProcess.exec(.{
+                    .cwd = cwd,
+                    .allocator = arena,
+                    .argv = args.items,
+                }) catch |err| return step.fail("unable to spawn {s}: {s}", .{ args.items[0], @errorName(err) });
+
+                if (result.stderr.len > 0) {
+                    try step.result_error_msgs.append(arena, result.stderr);
+                }
+
+                try step.handleChildProcessTerm(result.term, cwd, args.items);
+
                 break;
             }
         }
