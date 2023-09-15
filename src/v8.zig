@@ -1270,7 +1270,7 @@ pub inline fn getValue(val: anytype) Value {
 }
 
 inline fn getValueHandle(val: anytype) *const c.Value {
-    return @as(*const c.Value, @ptrCast(comptime switch (@TypeOf(val)) {
+    return @as(*const c.Value, @ptrCast(switch (@TypeOf(val)) {
         Object => val.handle,
         Value => val.handle,
         String => val.handle,
@@ -1299,7 +1299,7 @@ inline fn getValueHandle(val: anytype) *const c.Value {
 }
 
 inline fn getTemplateHandle(val: anytype) *const c.Template {
-    return @as(*const c.Template, @ptrCast(comptime switch (@TypeOf(val)) {
+    return @as(*const c.Template, @ptrCast(switch (@TypeOf(val)) {
         FunctionTemplate => val.handle,
         ObjectTemplate => val.handle,
         else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Template", .{@typeName(@TypeOf(val))})),
@@ -1307,7 +1307,7 @@ inline fn getTemplateHandle(val: anytype) *const c.Template {
 }
 
 inline fn getDataHandle(val: anytype) *const c.Data {
-    return @as(*const c.Data, @ptrCast(comptime switch (@TypeOf(val)) {
+    return @as(*const c.Data, @ptrCast(switch (@TypeOf(val)) {
         FunctionTemplate => val.handle,
         ObjectTemplate => val.handle,
         Integer => val.handle,
