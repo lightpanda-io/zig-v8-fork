@@ -803,63 +803,72 @@ pub const Function = struct {
 };
 
 pub fn Persistent(comptime T: type) type {
+    comptime var handleT: type = undefined;
+    comptime {
+        for (@typeInfo(T).Struct.fields) |field| {
+            if (!std.mem.eql(u8, field.name, "handle")) {
+                continue;
+            }
+            handleT = field.type;
+            break;
+        }
+    }
+
     return struct {
         const Self = @This();
 
-        inner: T,
+        handle: handleT,
 
         /// A new value is created that references the original value.
         /// A Persistent handle is a pointer just like any other value handles,
         /// but when creating and operating on it, an indirect pointer is used to represent a c.Persistent struct (v8::Persistent<v8::Value> in C++).
         pub fn init(isolate: Isolate, data: T) Self {
-            var handle: *c.Data = undefined;
-            c.v8__Persistent__New(isolate.handle, getDataHandle(data), @as(*c.Persistent, @ptrCast(&handle)));
+            var inner_handle: *c.Data = undefined;
+            c.v8__Persistent__New(isolate.handle, getDataHandle(data), @as(*c.Persistent, @ptrCast(&inner_handle)));
             return .{
-                .inner = .{
-                    .handle = @as(@TypeOf(data.handle), @ptrCast(handle)),
-                },
+                .handle = @as(@TypeOf(data.handle), @ptrCast(inner_handle)),
             };
         }
 
         pub fn deinit(self: *Self) void {
-            c.v8__Persistent__Reset(@as(*c.Persistent, @ptrCast(&self.inner.handle)));
+            c.v8__Persistent__Reset(@as(*c.Persistent, @ptrCast(&self.handle)));
         }
 
         pub fn setWeak(self: *Self) void {
-            c.v8__Persistent__SetWeak(@as(*c.Persistent, @ptrCast(&self.inner.handle)));
+            c.v8__Persistent__SetWeak(@as(*c.Persistent, @ptrCast(&self.handle)));
         }
 
         /// An external pointer can be set when cb_type is kParameter or kInternalFields.
         /// When cb_type is kInternalFields, the object fields are expected to be set with setAlignedPointerInInternalField.
         /// The pointer value must be a multiple of 2 due to how v8 encodes the pointers.
         pub fn setWeakFinalizer(self: *Self, finalizer_ctx: *anyopaque, cb: c.WeakCallback, cb_type: WeakCallbackType) void {
-            c.v8__Persistent__SetWeakFinalizer(@as(*c.Persistent, @ptrCast(&self.inner.handle)), finalizer_ctx, cb, @intFromEnum(cb_type));
+            c.v8__Persistent__SetWeakFinalizer(@as(*c.Persistent, @ptrCast(&self.handle)), finalizer_ctx, cb, @intFromEnum(cb_type));
         }
 
         /// Should only be called if you know the underlying type is a v8.Function.
         pub fn castToFunction(self: Self) Function {
             return .{
-                .handle = @as(*const c.Function, @ptrCast(self.inner.handle)),
+                .handle = @as(*const c.Function, @ptrCast(self.handle)),
             };
         }
 
         /// Should only be called if you know the underlying type is a v8.Object.
         pub fn castToObject(self: Self) Object {
             return .{
-                .handle = @as(*const c.Object, @ptrCast(self.inner.handle)),
+                .handle = @as(*const c.Object, @ptrCast(self.handle)),
             };
         }
 
         /// Should only be called if you know the underlying type is a v8.PromiseResolver.
         pub fn castToPromiseResolver(self: Self) PromiseResolver {
             return .{
-                .handle = @as(*const c.PromiseResolver, @ptrCast(self.inner.handle)),
+                .handle = @as(*const c.PromiseResolver, @ptrCast(self.handle)),
             };
         }
 
         pub fn toValue(self: Self) Value {
             return .{
-                .handle = self.inner.handle,
+                .handle = self.handle,
             };
         }
     };
