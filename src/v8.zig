@@ -1279,56 +1279,15 @@ pub inline fn getValue(val: anytype) Value {
 }
 
 inline fn getValueHandle(val: anytype) *const c.Value {
-    return @as(*const c.Value, @ptrCast(switch (@TypeOf(val)) {
-        Object => val.handle,
-        Value => val.handle,
-        String => val.handle,
-        Integer => val.handle,
-        Primitive => val.handle,
-        Number => val.handle,
-        BigInt => val.handle,
-        Boolean => val.handle,
-        Function => val.handle,
-        PromiseResolver => val.handle,
-        External => val.handle,
-        Array => val.handle,
-        Uint8Array => val.handle,
-        StackTrace => val.handle,
-        ObjectTemplate => val.handle,
-        Persistent(Object) => val.inner.handle,
-        Persistent(Value) => val.inner.handle,
-        Persistent(String) => val.inner.handle,
-        Persistent(Integer) => val.inner.handle,
-        Persistent(Primitive) => val.inner.handle,
-        Persistent(Number) => val.inner.handle,
-        Persistent(PromiseResolver) => val.inner.handle,
-        Persistent(Array) => val.inner.handle,
-        else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Value", .{@typeName(@TypeOf(val))})),
-    }));
+    return @as(*const c.Value, @ptrCast(val.handle));
 }
 
 inline fn getTemplateHandle(val: anytype) *const c.Template {
-    return @as(*const c.Template, @ptrCast(switch (@TypeOf(val)) {
-        FunctionTemplate => val.handle,
-        ObjectTemplate => val.handle,
-        else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Template", .{@typeName(@TypeOf(val))})),
-    }));
+    return @as(*const c.Template, @ptrCast(val.handle));
 }
 
 inline fn getDataHandle(val: anytype) *const c.Data {
-    return @as(*const c.Data, @ptrCast(switch (@TypeOf(val)) {
-        FunctionTemplate => val.handle,
-        ObjectTemplate => val.handle,
-        Integer => val.handle,
-        Function => val.handle,
-        Context => val.handle,
-        Object => val.handle,
-        Value => val.handle,
-        Module => val.handle,
-        Promise => val.handle,
-        PromiseResolver => val.handle,
-        else => @compileError(std.fmt.comptimePrint("{s} is not a subtype of v8::Data", .{@typeName(@TypeOf(val))})),
-    }));
+    return @as(*const c.Data, @ptrCast(val.handle));
 }
 
 pub const Message = struct {
