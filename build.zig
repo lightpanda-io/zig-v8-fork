@@ -48,19 +48,20 @@ const UseGclient = false;
 fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode, use_zig_tc: bool) !*std.build.Step {
     const step = b.step("v8", "Build v8 c binding lib.");
 
+    var cp: *CopyFileStep = undefined;
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient/v8/zig");
-        step.dependOn(&mkpath.step);
 
-        const cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gclient.gn"), b.pathFromRoot("gclient/v8/zig/BUILD.gn"));
-        step.dependOn(&cp.step);
+        cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gclient.gn"), b.pathFromRoot("gclient/v8/zig/BUILD.gn"));
+        cp.step.dependOn(&mkpath.step);
     } else {
         const mkpath = MakePathStep.create(b, "./v8/zig");
-        step.dependOn(&mkpath.step);
 
-        const cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gn"), b.pathFromRoot("v8/zig/BUILD.gn"));
-        step.dependOn(&cp.step);
+        cp = CopyFileStep.create(b, b.pathFromRoot("BUILD.gn"), b.pathFromRoot("v8/zig/BUILD.gn"));
+        cp.step.dependOn(&mkpath.step);
     }
+
+    step.dependOn(&cp.step);
 
     var gn_args = std.ArrayList([]const u8).init(b.allocator);
 
@@ -289,18 +290,20 @@ fn createV8_Build(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mo
     // cd gclient/v8 && gn desc ../../v8-build/x86_64-linux/release/ninja/ :v8 --tree
     // We can't see our own config because gn desc doesn't accept a --root-target.
     // One idea is to append our BUILD.gn to the v8 BUILD.gn instead of putting it in a subdirectory.
+    var run_gn: *Step.Run = undefined;
     if (UseGclient) {
-        var run_gn = b.addSystemCommand(&.{ gn, "--root=gclient/v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
-        step.dependOn(&run_gn.step);
+        run_gn = b.addSystemCommand(&.{ gn, "--root=gclient/v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
     } else {
         // To see available args for gn: cd v8 && gn args --list ../v8-build/{target}/release/ninja/
-        var run_gn = b.addSystemCommand(&.{ gn, "--root=v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
-        step.dependOn(&run_gn.step);
+        run_gn = b.addSystemCommand(&.{ gn, "--root=v8", "--root-target=//zig", "--dotfile=.gn", "gen", ninja_out_path, args });
     }
+    run_gn.step.dependOn(&cp.step);
+    step.dependOn(&run_gn.step);
 
     const ninja = getNinjaPath(b);
     // Only build our target. If no target is specified, ninja will build all the targets which includes developer tools, tests, etc.
     var run_ninja = b.addSystemCommand(&.{ ninja, "-C", ninja_out_path, "c_v8" });
+    run_ninja.step.dependOn(&run_gn.step);
     step.dependOn(&run_ninja.step);
 
     return step;
