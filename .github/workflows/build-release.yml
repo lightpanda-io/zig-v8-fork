@@ -56,4 +56,4 @@ jobs:
           build-args: |
             ARCH=${{matrix.arch}}
             OS=${{matrix.os}}
-          platforms: linux/${{matrix.build_arch}}
+          platforms: ${{matrix.os}}/${{matrix.build_arch}}
