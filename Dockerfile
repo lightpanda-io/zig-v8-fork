@@ -11,9 +11,9 @@ RUN apt update && \
     libglib2.0-dev clang
 
 # Install zig
-RUN curl -s --fail https://ziglang.org/download/$ZIG_VERSION/zig-linux-$ARCH-$ZIG_VERSION.tar.xz -L -o zig.tar.xz && \
+RUN curl -s --fail https://ziglang.org/download/$ZIG_VERSION/zig-$OS-$ARCH-$ZIG_VERSION.tar.xz -L -o zig.tar.xz && \
   tar -xf zig.tar.xz && \
-  mv "zig-linux-$ARCH-$ZIG_VERSION" /usr/local/zig && \
+  mv "zig-$OS-$ARCH-$ZIG_VERSION" /usr/local/zig && \
   ln -s /usr/local/zig/zig /usr/bin/zig && \
   ln -s /usr/local/zig/lib /usr/lib/zig
 
