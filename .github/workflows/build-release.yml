@@ -15,9 +15,8 @@ env:
   IMAGE_NAME: browsercore/v8
 
 jobs:
-  # build-release compiles v8 from sourse using zig.
+  # build-release compiles v8 from source using zig.
   # It pushes a docker image containing only /libc_v8.a file from scratch image.
-  # An artifact is also uploaded on github.
   # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
   build-release:
     strategy:
