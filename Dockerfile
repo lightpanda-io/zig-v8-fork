@@ -1,22 +1,13 @@
 # This dockerfile is used to build v8.
-FROM debian:12-slim as build
+FROM ghcr.io/browsercore/zig:0.11.0 as build
 
 ARG OS=linux
 ARG ARCH=x86_64
-ARG ZIG_VERSION=0.11.0
 
 # Install required dependencies
 RUN apt update && \
     apt install -y git curl bash xz-utils python3 ca-certificates pkg-config \
     libglib2.0-dev clang
-
-# Install zig
-RUN curl -s --fail https://ziglang.org/download/$ZIG_VERSION/zig-$OS-$ARCH-$ZIG_VERSION.tar.xz -L -o zig.tar.xz && \
-  tar -xf zig.tar.xz && \
-  mv "zig-$OS-$ARCH-$ZIG_VERSION" /usr/local/zig && \
-  ln -s /usr/local/zig/zig /usr/bin/zig && \
-  ln -s /usr/local/zig/lib /usr/lib/zig
-
 
 ADD . /src/
 WORKDIR /src
