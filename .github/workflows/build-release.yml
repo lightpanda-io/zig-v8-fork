@@ -1,9 +1,6 @@
 name: build-release
 
 on:
-  schedule:
-    # every 10th of month at 10:10am
-    - cron: "10 10 10 * *"
   push:
     tags:
       - "**"
