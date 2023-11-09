@@ -1,0 +1,68 @@
+name: build-release
+
+on:
+  push:
+    tags:
+      - "**"
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: browsercore/v8
+
+jobs:
+  # build-release compiles v8 from source using zig.
+  # It pushes a docker image containing only /libc_v8.a file from scratch image.
+  # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
+  build-release:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            os: linux
+            build_arch: amd64
+            zig_version: 0.11.0
+    name: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Read version
+        id: read-version
+        run: |
+          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+
+      - name: Docker connect
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Docker build
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{steps.meta.outputs.version}}_v8-${{steps.read-version.outputs.version}}_zig-${{matrix.zig_version}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ZIG_VERSION=${{matrix.zig_version}}
+            ARCH=${{matrix.arch}}
+            OS=${{matrix.os}}
+          platforms: ${{matrix.os}}/${{matrix.build_arch}}
