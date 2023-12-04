@@ -1,6 +1,6 @@
 # This dockerfile is used to build v8.
-ARG ZIG_VERSION=0.11.0
-FROM ghcr.io/browsercore/zig:${ZIG_VERSION} as build
+ARG ZIG_DOCKER_VERSION=0.11.0
+FROM ghcr.io/browsercore/zig:${ZIG_DOCKER_VERSION} as build
 
 ARG OS=linux
 ARG ARCH=x86_64

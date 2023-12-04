@@ -22,7 +22,7 @@ jobs:
           - arch: x86_64
             os: linux
             build_arch: amd64
-            zig_version: 0.12.0-dev.1773+8a8fd47d2
+            zig_docker_version: 0.12.0-dev.1773-8a8fd47d2
     name: build-release
     runs-on: ubuntu-latest
     permissions:
@@ -62,7 +62,7 @@ jobs:
           labels: |
             ${{ steps.meta.outputs.labels }}
           build-args: |
-            ZIG_VERSION=${{matrix.zig_version}}
+            ZIG_DOCKER_VERSION=${{matrix.zig_docker_version}}
             ARCH=${{matrix.arch}}
             OS=${{matrix.os}}
           platforms: ${{matrix.os}}/${{matrix.build_arch}}
