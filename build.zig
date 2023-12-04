@@ -628,7 +628,7 @@ pub const GetV8SourceStep = struct {
                 try step.handleChildProcUnsupported(cwd, args.items);
                 try Step.handleVerbose(step.owner, cwd, args.items);
 
-                const result = std.ChildProcess.exec(.{
+                const result = std.ChildProcess.run(.{
                     .cwd = cwd,
                     .allocator = arena,
                     .argv = args.items,
@@ -665,7 +665,7 @@ pub const GetV8SourceStep = struct {
 
         // Get DEPS in json.
         const argv = &.{ "python3", "tools/parse_deps.py", "v8/DEPS" };
-        const result = std.ChildProcess.exec(.{
+        const result = std.ChildProcess.run(.{
             .allocator = step.owner.allocator,
             .argv = argv,
         }) catch |err| return step.fail("unable to spawn {s}: {s}", .{ argv[0], @errorName(err) });
