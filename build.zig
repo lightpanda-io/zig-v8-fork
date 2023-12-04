@@ -674,8 +674,8 @@ pub const GetV8SourceStep = struct {
         defer parsed.deinit();
 
         const root = parsed.value;
-        var deps = root.object.get("deps").?;
-        var hooks = root.object.get("hooks").?;
+        const deps = root.object.get("deps").?;
+        const hooks = root.object.get("hooks").?;
 
         // build
         try self.getDep(step, deps, "build", "v8/build");
