@@ -57,8 +57,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{steps.meta.outputs.version}}_v8-${{steps.read-version.outputs.version}}_zig-${{matrix.zig_version}}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{steps.meta.outputs.version}}_v8-${{steps.read-version.outputs.version}}_zig-${{matrix.zig_docker_version}}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{matrix.zig_docker_version}}
           labels: |
             ${{ steps.meta.outputs.labels }}
           build-args: |
