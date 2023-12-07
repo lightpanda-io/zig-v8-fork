@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: browsercore/v8
+  IMAGE_NAME: lightpanda-io/v8
 
 jobs:
   # build-release compiles v8 from source using zig.
