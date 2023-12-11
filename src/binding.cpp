@@ -826,8 +826,25 @@ void v8__ObjectTemplate__SetAccessor__DEFAULT2(
         const v8::ObjectTemplate& self,
         const v8::Name& key,
         v8::AccessorNameGetterCallback getter,
+        const v8::Value& data) {
+  ptr_to_local(&self)->SetAccessor(ptr_to_local(&key), getter, nullptr, ptr_to_local(&data));
+}
+
+void v8__ObjectTemplate__SetAccessor__DEFAULT3(
+        const v8::ObjectTemplate& self,
+        const v8::Name& key,
+        v8::AccessorNameGetterCallback getter,
         v8::AccessorNameSetterCallback setter) {
     ptr_to_local(&self)->SetAccessor(ptr_to_local(&key), getter, setter);
+}
+
+void v8__ObjectTemplate__SetAccessor__DEFAULT4(
+        const v8::ObjectTemplate& self,
+        const v8::Name& key,
+        v8::AccessorNameGetterCallback getter,
+        v8::AccessorNameSetterCallback setter,
+        const v8::Value& data) {
+  ptr_to_local(&self)->SetAccessor(ptr_to_local(&key), getter, setter, ptr_to_local(&data));
 }
 
 // Array
