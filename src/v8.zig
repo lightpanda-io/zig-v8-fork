@@ -913,8 +913,16 @@ pub const ObjectTemplate = struct {
         c.v8__ObjectTemplate__SetAccessor__DEFAULT(self.handle, name.handle, getter);
     }
 
+    pub fn setGetterData(self: Self, name: Name, getter: c.AccessorNameGetterCallback, data_val: anytype) void {
+        c.v8__ObjectTemplate__SetAccessor__DEFAULT2(self.handle, name.handle, getter, getDataHandle(data_val));
+    }
+
     pub fn setGetterAndSetter(self: Self, name: Name, getter: c.AccessorNameGetterCallback, setter: c.AccessorNameSetterCallback) void {
-        c.v8__ObjectTemplate__SetAccessor__DEFAULT2(self.handle, name.handle, getter, setter);
+        c.v8__ObjectTemplate__SetAccessor__DEFAULT3(self.handle, name.handle, getter, setter);
+    }
+
+    pub fn setGetterAndSetterData(self: Self, name: Name, getter: c.AccessorNameGetterCallback, setter: c.AccessorNameSetterCallback, data_val: anytype) void {
+        c.v8__ObjectTemplate__SetAccessor__DEFAULT4(self.handle, name.handle, getter, setter, getDataHandle(data_val));
     }
 
     pub fn set(self: Self, key: Name, value: anytype, attr: c.PropertyAttribute) void {

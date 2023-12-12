@@ -744,7 +744,18 @@ void v8__ObjectTemplate__SetAccessor__DEFAULT2(
     const ObjectTemplate* self,
     const Name* key,
     AccessorNameGetterCallback getter,
+    const Value* data);
+void v8__ObjectTemplate__SetAccessor__DEFAULT3(
+    const ObjectTemplate* self,
+    const Name* key,
+    AccessorNameGetterCallback getter,
     AccessorNameSetterCallback setter);
+void v8__ObjectTemplate__SetAccessor__DEFAULT4(
+    const ObjectTemplate* self,
+    const Name* key,
+    AccessorNameGetterCallback getter,
+    AccessorNameSetterCallback setter,
+    const Value* data);
 
 // ScriptOrigin
 typedef struct ScriptOriginOptions {
