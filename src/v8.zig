@@ -49,6 +49,7 @@ pub const C_PromiseRejectMessage = c.PromiseRejectMessage;
 
 pub const C_Message = c.Message;
 pub const C_Value = c.Value;
+pub const C_Object = c.Object;
 pub const C_Name = c.Name;
 pub const C_Context = c.Context;
 pub const C_Data = c.Data;
