@@ -52,6 +52,7 @@ pub const C_Value = c.Value;
 pub const C_Object = c.Object;
 pub const C_Name = c.Name;
 pub const C_Context = c.Context;
+pub const C_FunctionTemplate = c.FunctionTemplate;
 pub const C_Data = c.Data;
 pub const C_FixedArray = c.FixedArray;
 pub const C_Module = c.Module;
