@@ -886,6 +886,11 @@ const v8::Value* v8__Object__GetInternalField(
     return local_to_ptr(ptr_to_local(&self)->GetInternalField(index));
 }
 
+int v8__Object__InternalFieldCount(
+        const v8::Object& self) {
+    return ptr_to_local(&self)->InternalFieldCount();
+}
+
 const v8::Value* v8__Object__Get(
         const v8::Object& self,
         const v8::Context& ctx,

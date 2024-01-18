@@ -997,6 +997,10 @@ pub const Object = struct {
         };
     }
 
+    pub fn internalFieldCount(self: Self) usize {
+        return @intCast(c.v8__Object__InternalFieldCount(self.handle));
+    }
+
     pub fn setAlignedPointerInInternalField(self: Self, idx: u32, ptr: ?*anyopaque) void {
         c.v8__Object__SetAlignedPointerInInternalField(self.handle, @as(c_int, @intCast(idx)), ptr);
     }
