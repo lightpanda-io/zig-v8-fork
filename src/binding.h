@@ -460,6 +460,8 @@ uint32_t v8__Array__Length(const Array* self);
 
 // Object
 const Object* v8__Object__New(Isolate* isolate);
+int v8__Object__InternalFieldCount(
+    const Object* self);
 const Value* v8__Object__GetInternalField(
     const Object* self,
     int index);
