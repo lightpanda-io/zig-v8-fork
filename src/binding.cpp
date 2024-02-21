@@ -922,6 +922,19 @@ void v8__Object__Set(
     );
 }
 
+void v8__Object__SetAtIndex(
+        const v8::Object& self,
+        const v8::Context& ctx,
+        uint32_t idx,
+        const v8::Value& value,
+        v8::Maybe<bool>* out) {
+    *out = ptr_to_local(&self)->Set(
+        ptr_to_local(&ctx),
+        idx,
+        ptr_to_local(&value)
+    );
+}
+
 void v8__Object__DefineOwnProperty(
         const v8::Object& self,
         const v8::Context& ctx,

@@ -1013,6 +1013,13 @@ pub const Object = struct {
         return out.has_value;
     }
 
+    pub fn setValueAtIndex(self: Self, ctx: Context, idx: u32, value: anytype) bool {
+        var out: c.MaybeBool = undefined;
+        c.v8__Object__SetAtIndex(self.handle, ctx.handle, idx, getValueHandle(value), &out);
+        // Set only returns empty for an error or true.
+        return out.has_value;
+    }
+
     pub fn getValue(self: Self, ctx: Context, key: anytype) !Value {
         if (c.v8__Object__Get(self.handle, ctx.handle, getValueHandle(key))) |handle| {
             return Value{
