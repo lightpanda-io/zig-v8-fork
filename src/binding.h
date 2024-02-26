@@ -483,6 +483,12 @@ void v8__Object__Set(
     const Value* key,
     const Value* value,
     MaybeBool* out);
+void v8__Object__SetAtIndex(
+    const Object* self,
+    const Context* ctx,
+    uint32_t idx,
+    const Value* value,
+    MaybeBool* out);
 void v8__Object__DefineOwnProperty(
     const Object* self,
     const Context* ctx,
