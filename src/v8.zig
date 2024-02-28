@@ -987,6 +987,12 @@ pub const Object = struct {
         };
     }
 
+    pub fn getConstructorName(self: Self) !String {
+        return String{
+            .handle = c.v8__Object__GetConstructorName(self.handle) orelse return error.JsException,
+        };
+    }
+
     pub fn setInternalField(self: Self, idx: u32, value: anytype) void {
         c.v8__Object__SetInternalField(self.handle, @as(c_int, @intCast(idx)), getValueHandle(value));
     }
