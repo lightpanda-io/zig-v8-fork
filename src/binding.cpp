@@ -873,6 +873,11 @@ const v8::Object* v8__Object__New(
     return local_to_ptr(v8::Object::New(isolate));
 }
 
+const v8::String* v8__Object__GetConstructorName(
+        const v8::Object& self) {
+  return local_to_ptr(ptr_to_local(&self)->GetConstructorName());
+}
+
 void v8__Object__SetInternalField(
         const v8::Object& self,
         int index,
