@@ -1094,6 +1094,12 @@ pub const Object = struct {
         };
     }
 
+    pub fn getPrototype(self: Self) Value {
+        return .{
+            .handle = c.v8__Object__GetPrototype(self.handle).?,
+        };
+    }
+
     pub fn setPrototype(self: Self, ctx: Context, prototype: Object) bool {
         var out: c.MaybeBool = undefined;
         c.v8__Object__SetPrototype(self.handle, ctx.handle, prototype.handle, &out);

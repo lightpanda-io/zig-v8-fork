@@ -515,6 +515,7 @@ const Array* v8__Object__GetOwnPropertyNames(
 const Array* v8__Object__GetPropertyNames(
     const Object* self,
     const Context* ctx);
+const Value* v8__Object__GetPrototype(const Object* self);
 void v8__Object__SetPrototype(
     const Object* self,
     const Context* ctx,
