@@ -996,6 +996,11 @@ const v8::Array* v8__Object__GetPropertyNames(
     );
 }
 
+const v8::Value* v8__Object__GetPrototype(
+	const v8::Object& self) {
+  return local_to_ptr(ptr_to_local(&self)->GetPrototype());
+}
+
 void v8__Object__SetPrototype(
         const v8::Object& self,
         const v8::Context& ctx,
