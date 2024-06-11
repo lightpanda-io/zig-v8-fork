@@ -444,7 +444,7 @@ const MakePathStep = struct {
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
         _ = prog_node;
-        const self = @fieldParentPtr(Self, "step", step);
+        const self: *Self = @fieldParentPtr("step", step);
         try std.fs.cwd().makePath(self.b.pathFromRoot(self.path));
     }
 };
@@ -475,7 +475,7 @@ const CopyFileStep = struct {
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
         _ = prog_node;
-        const self = @fieldParentPtr(Self, "step", step);
+        const self: *Self = @fieldParentPtr("step", step);
         try std.fs.copyFileAbsolute(self.src_path, self.dst_path, .{});
     }
 };
@@ -644,7 +644,7 @@ pub const GetV8SourceStep = struct {
 
     fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
         _ = prog_node;
-        const self = @fieldParentPtr(Self, "step", step);
+        const self: *Self = @fieldParentPtr("step", step);
 
         // Pull the minimum source we need by looking at DEPS.
         // TODO: Check if we have the right branches, otherwise reclone.

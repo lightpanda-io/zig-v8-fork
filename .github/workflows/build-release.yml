@@ -22,7 +22,7 @@ jobs:
           - arch: x86_64
             os: linux
             build_arch: amd64
-            zig_docker_version: 0.12.0-dev.3518-d2be725e4
+            zig_docker_version: 0.12.1
     name: build-release
     runs-on: ubuntu-latest
     permissions:
