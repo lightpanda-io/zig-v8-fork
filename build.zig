@@ -10,14 +10,15 @@ pub fn build(b: *std.Build) !void {
     //const build_v8 = b.option(bool, "build_v8", "Whether to build from v8 source") orelse false;
     const path = b.option([]const u8, "path", "Path to main file, for: build, run") orelse "";
     const use_zig_tc = b.option(bool, "zig-toolchain", "Experimental: Use zig cc/c++/ld to build v8.") orelse false;
+    const icu = b.option(bool, "icu", "Add ICU (unicode) support. Default is true") orelse true;
 
     const mode = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
     _ = createGetTools(b);
-    _ = createGetV8(b);
+    _ = createGetV8(b, icu);
 
-    const v8 = try createV8_Build(b, target, mode, use_zig_tc);
+    const v8 = try createV8_Build(b, target, mode, use_zig_tc, icu);
 
     const create_test = createTest(b, target, mode, use_zig_tc);
     const run_test = b.addRunArtifact(create_test);
@@ -32,10 +33,6 @@ pub fn build(b: *std.Build) !void {
     b.default_step.dependOn(v8);
 }
 
-// When this is true, we'll strip V8 features down to a minimum so the resulting library is smaller.
-// eg. i18n will be excluded.
-const MinimalV8 = true;
-
 // gclient is comprehensive and will pull everything for the v8 project.
 // Set this to false to pull the minimal required src by parsing v8/DEPS and whitelisting deps we care about.
 const UseGclient = false;
@@ -43,7 +40,7 @@ const UseGclient = false;
 // V8's build process is complex and porting it to zig could take quite awhile.
 // It would be nice if there was a way to import .gn files into the zig build system.
 // For now we just use gn/ninja like rusty_v8 does: https://github.com/denoland/rusty_v8/blob/main/build.rs
-fn createV8_Build(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.builtin.Mode, use_zig_tc: bool) !*std.Build.Step {
+fn createV8_Build(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.builtin.Mode, use_zig_tc: bool, icu: bool) !*std.Build.Step {
     const step = b.step("v8", "Build v8 c binding lib.");
 
     var cp: *CopyFileStep = undefined;
@@ -113,7 +110,7 @@ fn createV8_Build(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.bui
         // TODO: Might want to turn V8_ENABLE_CHECKS off to remove asserts.
     }
 
-    if (MinimalV8) {
+    if (!icu) {
         // Don't add i18n for now. It has a large dependency on third_party/icu.
         try gn_args.append("v8_enable_i18n_support=false");
     }
@@ -351,7 +348,7 @@ const CheckV8DepsStep = struct {
     }
 };
 
-fn createGetV8(b: *std.Build) *std.Build.Step {
+fn createGetV8(b: *std.Build, icu: bool) *std.Build.Step {
     const step = b.step("get-v8", "Gets v8 source using gclient.");
     if (UseGclient) {
         const mkpath = MakePathStep.create(b, "./gclient");
@@ -363,7 +360,7 @@ fn createGetV8(b: *std.Build) *std.Build.Step {
         cmd.addPathDir(b.pathFromRoot("./tools/depot_tools"));
         step.dependOn(&cmd.step);
     } else {
-        const get = GetV8SourceStep.create(b);
+        const get = GetV8SourceStep.create(b, icu);
         step.dependOn(&get.step);
     }
     return step;
@@ -557,8 +554,9 @@ pub const GetV8SourceStep = struct {
 
     step: Step,
     b: *std.Build,
+    icu: bool,
 
-    pub fn create(b: *std.Build) *Self {
+    pub fn create(b: *std.Build, icu: bool) *Self {
         const self = b.allocator.create(Self) catch unreachable;
         self.* = .{
             .b = b,
@@ -568,6 +566,7 @@ pub const GetV8SourceStep = struct {
                 .makeFn = make,
                 .owner = b,
             }),
+            .icu = icu,
         };
         return self;
     }
@@ -711,6 +710,11 @@ pub const GetV8SourceStep = struct {
 
         // markupsafe
         try self.getDep(step, deps, "third_party/markupsafe", "v8/third_party/markupsafe");
+
+        // icu
+        if (self.icu) {
+            try self.getDep(step, deps, "third_party/icu", "v8/third_party/icu");
+        }
 
         // For windows.
         if (builtin.os.tag == .windows) {
