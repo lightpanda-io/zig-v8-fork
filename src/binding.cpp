@@ -688,6 +688,12 @@ const v8::Value* v8__Promise__Result(const v8::Promise& self) {
 
 // Value
 
+const v8::String* v8__Value__TypeOf(
+        v8::Value& self,
+        v8::Isolate* isolate) {
+    return local_to_ptr(self.TypeOf(isolate));
+}
+
 const v8::String* v8__Value__ToString(
         const v8::Value& self,
         const v8::Context& ctx) {

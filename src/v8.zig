@@ -1829,6 +1829,12 @@ pub const Value = struct {
 
     handle: *const c.Value,
 
+    pub fn typeOf(self: Self, isolate: Isolate) !String {
+        return String{
+            .handle = c.v8__Value__TypeOf(self.handle, isolate.handle) orelse return error.JsException,
+        };
+    }
+
     pub fn toString(self: Self, ctx: Context) !String {
         return String{
             .handle = c.v8__Value__ToString(self.handle, ctx.handle) orelse return error.JsException,
