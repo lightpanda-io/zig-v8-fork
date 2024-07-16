@@ -4,65 +4,68 @@ on:
   push:
     tags:
       - "**"
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+
+permissions:
+  contents: write
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: lightpanda-io/v8
+  ZIG_VERSION: 0.12.1
 
 jobs:
-  # build-release compiles v8 from source using zig.
-  # It pushes a docker image containing only /libc_v8.a file from scratch image.
-  # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
-  build-release:
-    strategy:
-      matrix:
-        include:
-          - arch: x86_64
-            os: linux
-            build_arch: amd64
-            zig_docker_version: 0.12.1
-    name: build-release
+  build-x86_64-linux:
+    env:
+      OS: linux
+      ARCH: x86_64
+
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Read version
-        id: read-version
-        run: |
-          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+      - run: zig build get-tools
+      - run: zig build get-v8
+      - run: zig build -Doptimize=ReleaseSafe
+      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
 
-      - name: Docker connect
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      - name: Upload the build
+        uses: ncipollo/release-action@v1
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+          allowUpdates: true
+          artifacts: libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
+
+  build-aarch64-macos:
+    env:
+      OS: macos
+      ARCH: aarch64
+
+    runs-on: macos-latest
+    steps:
+      - uses: mlugg/setup-zig@v1
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Docker build
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+          version: ${{ env.ZIG_VERSION }}
+
+      - uses: actions/setup-python@v5
         with:
-          context: .
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{steps.meta.outputs.version}}_v8-${{steps.read-version.outputs.version}}_zig-${{matrix.zig_docker_version}}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{matrix.zig_docker_version}}
-          labels: |
-            ${{ steps.meta.outputs.labels }}
-          build-args: |
-            ZIG_DOCKER_VERSION=${{matrix.zig_docker_version}}
-            ARCH=${{matrix.arch}}
-            OS=${{matrix.os}}
-          platforms: ${{matrix.os}}/${{matrix.build_arch}}
+          python-version: '3.11'
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - run: zig build get-tools
+      - run: zig build get-v8
+      - run: zig build -Doptimize=ReleaseSafe
+      - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
+
+      - name: Upload the build
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
