@@ -33,11 +33,16 @@ jobs:
       - run: zig build -Doptimize=ReleaseSafe
       - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
 
+      - name: Read version
+        id: read-version
+        run: |
+          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+
       - name: Upload the build
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
+          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
 
   build-aarch64-macos:
     env:
@@ -64,8 +69,13 @@ jobs:
       - run: zig build -Doptimize=ReleaseSafe
       - run: mv v8-build/${{ env.ARCH }}-${{ env.OS }}/release/ninja/obj/zig/libc_v8.a libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
 
+      - name: Read version
+        id: read-version
+        run: |
+          echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
+
       - name: Upload the build
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: libc_v8_${{ env.OS }}_${{ env.ARCH }}.a
+          artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
