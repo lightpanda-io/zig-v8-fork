@@ -439,7 +439,7 @@ const MakePathStep = struct {
         return new;
     }
 
-    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
         _ = prog_node;
         const self: *Self = @fieldParentPtr("step", step);
         try std.fs.cwd().makePath(self.b.pathFromRoot(self.path));
@@ -470,7 +470,7 @@ const CopyFileStep = struct {
         return new;
     }
 
-    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
         _ = prog_node;
         const self: *Self = @fieldParentPtr("step", step);
         try std.fs.copyFileAbsolute(self.src_path, self.dst_path, .{});
@@ -489,7 +489,7 @@ fn linkV8(b: *std.Build, step: *std.Build.Step.Compile, use_zig_tc: bool) void {
         mode_str,
         lib,
     }) catch unreachable;
-    step.addAssemblyFile(.{ .path = lib_path });
+    step.addAssemblyFile(b.path(lib_path));
     if (builtin.os.tag == .linux) {
         if (use_zig_tc) {
             // TODO: This should be linked already when we built v8.
@@ -515,12 +515,12 @@ fn linkV8(b: *std.Build, step: *std.Build.Step.Compile, use_zig_tc: bool) void {
 
 fn createTest(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.builtin.Mode, use_zig_tc: bool) *std.Build.Step.Compile {
     const step = b.addTest(.{
-        .root_source_file = .{ .path = "./src/test.zig" },
+        .root_source_file = b.path("./src/test.zig"),
         .target = target,
         .optimize = mode,
         .link_libc = true,
     });
-    step.addIncludePath(.{ .path = "./src" });
+    step.addIncludePath(b.path("./src"));
     linkV8(b, step, use_zig_tc);
     return step;
 }
@@ -624,7 +624,7 @@ pub const GetV8SourceStep = struct {
                 try step.handleChildProcUnsupported(cwd, args.items);
                 try Step.handleVerbose(step.owner, cwd, args.items);
 
-                const result = std.ChildProcess.run(.{
+                const result = std.process.Child.run(.{
                     .cwd = cwd,
                     .allocator = arena,
                     .argv = args.items,
@@ -641,7 +641,7 @@ pub const GetV8SourceStep = struct {
         }
     }
 
-    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
+    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
         _ = prog_node;
         const self: *Self = @fieldParentPtr("step", step);
 
@@ -661,7 +661,7 @@ pub const GetV8SourceStep = struct {
 
         // Get DEPS in json.
         const argv = &.{ "python3", "tools/parse_deps.py", "v8/DEPS" };
-        const result = std.ChildProcess.run(.{
+        const result = std.process.Child.run(.{
             .allocator = step.owner.allocator,
             .argv = argv,
         }) catch |err| return step.fail("unable to spawn {s}: {s}", .{ argv[0], @errorName(err) });
@@ -744,12 +744,12 @@ fn createCompileStep(b: *std.Build, path: []const u8, target: std.Build.Resolved
 
     const step = b.addExecutable(.{
         .name = name,
-        .root_source_file = .{ .path = path },
+        .root_source_file = b.path(path),
         .optimize = mode,
         .target = target,
         .link_libc = true,
     });
-    step.addIncludePath(.{ .path = "src" });
+    step.addIncludePath(b.path("src"));
 
     if (mode == .ReleaseSafe) {
         step.root_module.strip = true;
