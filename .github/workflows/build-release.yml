@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  ZIG_VERSION: 0.12.1
+  ZIG_VERSION: 0.13.0
 
 jobs:
   build-x86_64-linux:
