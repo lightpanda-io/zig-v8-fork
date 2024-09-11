@@ -2,8 +2,11 @@
 
 #include <cassert>
 #include "include/libplatform/libplatform.h"
+#include "include/v8-inspector.h"
 #include "include/v8.h"
 #include "src/api/api.h"
+
+#include "inspector.h"
 
 template <class T, class... Args>
 class Wrapper {
@@ -1501,4 +1504,218 @@ void v8__base__SetDcheckFunction(void (*func)(const char*, int, const char*)) {
     v8::base::SetDcheckFunction(func);
 }
 
+// Inspector
+// ---------
+
+// v8 inspector is not really documented and not easy.
+// Sources:
+// - https://v8.dev/docs/inspector
+// - C++ doc https://v8.github.io/api/head/namespacev8__inspector.html
+// - Rusty (Deno) bindings https://github.com/denoland/rusty_v8/blob/main/src/binding.cc
+// - https://github.com/ahmadov/v8_inspector_example
+// - https://web.archive.org/web/20210918052901/http://hyperandroid.com/2020/02/12/v8-inspector-from-an-embedder-standpoint
+
+// Utils
+
+static inline v8_inspector::StringView toStringView(const std::string &str) {
+  auto* stringView = reinterpret_cast<const uint8_t*>(str.c_str());
+  return { stringView, str.length() };
 }
+
+static inline std::string fromStringView(v8::Isolate* isolate, const v8_inspector::StringView stringView) {
+  int length = static_cast<int>(stringView.length());
+  v8::Local<v8::String> message = (
+        stringView.is8Bit()
+          ? v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(stringView.characters8()), v8::NewStringType::kNormal, length)
+          : v8::String::NewFromTwoByte(isolate, reinterpret_cast<const uint16_t*>(stringView.characters16()), v8::NewStringType::kNormal, length)
+      ).ToLocalChecked();
+  v8::String::Utf8Value result(isolate, message);
+  return *result;
+}
+
+// Inspector
+
+v8_inspector::V8Inspector *v8_inspector__Inspector__Create(
+    v8::Isolate* isolate, v8_inspector__Client__IMPL *client) {
+  std::unique_ptr<v8_inspector::V8Inspector> u =
+    v8_inspector::V8Inspector::create(isolate, client);
+  return u.release();
+}
+void v8_inspector__Inspector__DELETE(v8_inspector::V8Inspector* self) {
+  delete self;
+}
+v8_inspector::V8InspectorSession *v8_inspector__Inspector__Connect(
+    v8_inspector::V8Inspector *self, int contextGroupId,
+    v8_inspector__Channel__IMPL *channel,
+    v8_inspector::V8Inspector::ClientTrustLevel client_trust_level) {
+  auto state = v8_inspector::StringView();
+  std::unique_ptr<v8_inspector::V8InspectorSession> u =
+      self->connect(contextGroupId, channel, state, client_trust_level);
+  return u.release();
+}
+void v8_inspector__Inspector__ContextCreated(v8_inspector::V8Inspector *self,
+                                             int contextGroupId,
+                                             const v8::Context &ctx) {
+  v8_inspector::StringView ctxView(toStringView("inspector"));
+  auto context = ptr_to_local(&ctx);
+  v8_inspector::V8ContextInfo info(context, contextGroupId, ctxView);
+  self->contextCreated(info);
+}
+
+// InspectorSession
+
+void v8_inspector__Session__dispatchProtocolMessage(
+    v8_inspector::V8InspectorSession *session, v8::Isolate *isolate,
+    const char *msg, int msg_len) {
+  std::string message;
+  message.assign(msg, msg_len);
+  auto str_view = toStringView(message);
+  session->dispatchProtocolMessage(str_view);
+}
+
+// InspectorChannel
+
+v8_inspector__Channel__IMPL * v8_inspector__Channel__IMPL__CREATE(v8::Isolate *isolate) {  
+  auto channel = new v8_inspector__Channel__IMPL();
+  channel->isolate = isolate;
+  return channel;
+}
+void v8_inspector__Channel__IMPL__DELETE(v8_inspector__Channel__IMPL *self) {
+  delete self;
+}
+void v8_inspector__Channel__IMPL__SET_DATA(v8_inspector__Channel__IMPL *self, void *data) {
+  self->data = data;
+}
+
+// declaration of functions implementations
+// NOTE: zig project should provide those implementations with C-ABI functions
+void v8_inspector__Channel__IMPL__sendResponse(
+    v8_inspector__Channel__IMPL* self, void* data,
+    int callId, const char* message, size_t length);
+void v8_inspector__Channel__IMPL__sendNotification(
+    v8_inspector__Channel__IMPL* self, void *data,
+    const char* msg, size_t length);
+void v8_inspector__Channel__IMPL__flushProtocolNotifications(
+    v8_inspector__Channel__IMPL* self, void *data);
+
+// c++ implementation (just wrappers around the C/zig functions)
+} // extern "C"
+void v8_inspector__Channel__IMPL::sendResponse(
+    int callId, std::unique_ptr<v8_inspector::StringBuffer> message) {
+  const std::string resp = fromStringView(this->isolate, message->string());
+  return v8_inspector__Channel__IMPL__sendResponse(this, this->data, callId, resp.c_str(), resp.length());
+}
+void v8_inspector__Channel__IMPL::sendNotification(
+    std::unique_ptr<v8_inspector::StringBuffer> message) {
+  const std::string notif = fromStringView(this->isolate, message->string());
+   return v8_inspector__Channel__IMPL__sendNotification(this, this->data, notif.c_str(), notif.length());
+}
+void v8_inspector__Channel__IMPL::flushProtocolNotifications() {
+  return v8_inspector__Channel__IMPL__flushProtocolNotifications(this, this->data);
+}
+
+extern "C" {
+
+// wrappers for the public API Interface
+// NOTE: not sure it's useful to expose those
+void v8_inspector__Channel__sendResponse(
+    v8_inspector::V8Inspector::Channel* self, int callId,
+    v8_inspector::StringBuffer* message) {
+  self->sendResponse(
+      callId,
+      static_cast<std::unique_ptr<v8_inspector::StringBuffer>>(message));
+}
+void v8_inspector__Channel__sendNotification(
+    v8_inspector::V8Inspector::Channel* self,
+    v8_inspector::StringBuffer* message) {
+  self->sendNotification(
+      static_cast<std::unique_ptr<v8_inspector::StringBuffer>>(message));
+}
+void v8_inspector__Channel__flushProtocolNotifications(
+    v8_inspector::V8Inspector::Channel* self) {
+  self->flushProtocolNotifications();
+}
+
+// InspectorClient
+
+v8_inspector__Client__IMPL *v8_inspector__Client__IMPL__CREATE() {
+  return new v8_inspector__Client__IMPL();
+}
+void v8_inspector__Client__IMPL__DELETE(v8_inspector__Client__IMPL *self) {
+  delete self;
+}
+void v8_inspector__Client__IMPL__SET_DATA(v8_inspector__Client__IMPL *self, void *data) {
+  self->data = data;
+}
+
+// declaration of functions implementations
+// NOTE: zig project should provide those implementations with C-like functions
+int64_t v8_inspector__Client__IMPL__generateUniqueId(v8_inspector__Client__IMPL* self, void* data);
+void v8_inspector__Client__IMPL__runMessageLoopOnPause(
+    v8_inspector__Client__IMPL *self,
+    void* data, int contextGroupId);
+void v8_inspector__Client__IMPL__quitMessageLoopOnPause(v8_inspector__Client__IMPL* self, void* data);
+void v8_inspector__Client__IMPL__runIfWaitingForDebugger(
+    v8_inspector__Client__IMPL* self, void* data, int contextGroupId);
+void v8_inspector__Client__IMPL__consoleAPIMessage(
+    v8_inspector__Client__IMPL* self, void* data, int contextGroupId,
+    v8::Isolate::MessageErrorLevel level,
+    const v8_inspector::StringView &message,
+    const v8_inspector::StringView &url, unsigned lineNumber,
+    unsigned columnNumber, v8_inspector::V8StackTrace *stackTrace);
+
+// c++ implementation (just wrappers around the c/zig functions)
+} // extern "C"
+int64_t v8_inspector__Client__IMPL::generateUniqueId() {
+  return v8_inspector__Client__IMPL__generateUniqueId(this, this->data);
+}
+void v8_inspector__Client__IMPL::runMessageLoopOnPause(int contextGroupId) {
+  return v8_inspector__Client__IMPL__runMessageLoopOnPause(this, this->data, contextGroupId);
+}
+void v8_inspector__Client__IMPL::quitMessageLoopOnPause() {
+  return v8_inspector__Client__IMPL__quitMessageLoopOnPause(this, this->data);
+}
+void v8_inspector__Client__IMPL::runIfWaitingForDebugger(int contextGroupId) {
+  return v8_inspector__Client__IMPL__runIfWaitingForDebugger(this, this->data, contextGroupId);
+}
+void v8_inspector__Client__IMPL::consoleAPIMessage(
+    int contextGroupId, v8::Isolate::MessageErrorLevel level,
+    const v8_inspector::StringView &message,
+    const v8_inspector::StringView &url, unsigned lineNumber,
+    unsigned columnNumber, v8_inspector::V8StackTrace *stackTrace) {
+  return v8_inspector__Client__IMPL__consoleAPIMessage(
+      this, this->data, contextGroupId, level, message, url, lineNumber,
+      columnNumber, stackTrace);
+}
+
+extern "C" {
+
+// wrappers for the public API Interface
+// NOTE: not sure it's useful to expose those
+int64_t v8_inspector__Client__generateUniqueId(
+    v8_inspector::V8InspectorClient *self) {
+  return self->generateUniqueId();
+}
+void v8_inspector__Client__runMessageLoopOnPause(
+    v8_inspector::V8InspectorClient* self, int contextGroupId) {
+  self->runMessageLoopOnPause(contextGroupId);
+}
+void v8_inspector__Client__quitMessageLoopOnPause(
+    v8_inspector::V8InspectorClient* self) {
+  self->quitMessageLoopOnPause();
+}
+void v8_inspector__Client__runIfWaitingForDebugger(
+    v8_inspector::V8InspectorClient* self, int contextGroupId) {
+  self->runIfWaitingForDebugger(contextGroupId);
+}
+void v8_inspector__Client__consoleAPIMessage(
+    v8_inspector::V8InspectorClient* self, int contextGroupId,
+    v8::Isolate::MessageErrorLevel level,
+    const v8_inspector::StringView& message,
+    const v8_inspector::StringView& url, unsigned lineNumber,
+    unsigned columnNumber, v8_inspector::V8StackTrace* stackTrace) {
+  self->consoleAPIMessage(contextGroupId, level, message, url, lineNumber,
+                          columnNumber, stackTrace);
+}
+
+} // extern "C"
