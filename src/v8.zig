@@ -2283,3 +2283,241 @@ test "Internals." {
     try eq(c.v8__ScriptCompiler__CachedData__SIZEOF(), @sizeOf(c.ScriptCompilerCachedData));
     try eq(c.v8__HeapStatistics__SIZEOF(), @sizeOf(c.HeapStatistics));
 }
+
+// Inspector
+
+pub const ClientTrustLevel = enum(u32) {
+    kUntrusted = c.kUntrusted,
+    kFullyTrusted = c.kFullyTrusted,
+};
+
+pub const Inspector = struct {
+    handle: *c.Inspector = undefined,
+
+    client: InspectorClient = undefined,
+    channel: InspectorChannel = undefined,
+
+    rnd: RndGen = RndGen.init(0),
+
+    const RndGen = std.rand.DefaultPrng;
+
+    const contextGroupId = 1;
+    const clientTrustLevel = 1;
+
+    pub fn init(
+        self: *Inspector,
+        client: InspectorClient,
+        channel: InspectorChannel,
+        isolate: Isolate,
+    ) void {
+        // NOTE: Inspector self must be created *before*
+        // setting inspector on c.InspectorClient and c.InspectorChannel
+        // to ensure right data is available on corresponding callbacks
+        self.* = Inspector{};
+
+        // client
+        client.setInspector(self);
+        self.client = client;
+
+        // channel
+        channel.setInspector(self);
+        self.channel = channel;
+
+        const inspector = c.v8_inspector__Inspector__Create(isolate.handle, self.client.handle).?;
+        self.handle = inspector;
+    }
+
+    pub fn deinit(self: *Inspector) void {
+        self.client.deinit();
+        self.channel.deinit();
+        c.v8_inspector__Inspector__DELETE(self.handle);
+    }
+
+    fn fromData(data: *anyopaque) *Inspector {
+        const inspector_raw = @as(*align(1) Inspector, @ptrCast(data));
+        return @as(*Inspector, @alignCast(inspector_raw));
+    }
+
+    pub fn connect(self: *Inspector) InspectorSession {
+        const session = c.v8_inspector__Inspector__Connect(self.handle, contextGroupId, self.channel.handle, clientTrustLevel).?;
+        return InspectorSession{ .handle = session };
+    }
+
+    pub fn contextCreated(self: Inspector, ctx: Context) void {
+        c.v8_inspector__Inspector__ContextCreated(self.handle, contextGroupId, ctx.handle);
+    }
+};
+
+// InspectorClient
+
+pub const InspectorClient = struct {
+    handle: *c.InspectorClientImpl,
+
+    pub fn init() InspectorClient {
+        return .{ .handle = c.v8_inspector__Client__IMPL__CREATE() };
+    }
+
+    pub fn deinit(self: InspectorClient) void {
+        c.v8_inspector__Client__IMPL__DELETE(self.handle);
+    }
+
+    fn setInspector(self: InspectorClient, inspector: *Inspector) void {
+        c.v8_inspector__Client__IMPL__SET_DATA(self.handle, inspector);
+    }
+};
+
+pub export fn v8_inspector__Client__IMPL__generateUniqueId(
+    _: *c.InspectorClientImpl,
+    data: *anyopaque,
+) callconv(.C) i64 {
+    const inspector = Inspector.fromData(data);
+    return inspector.rnd.random().int(i64);
+}
+
+pub export fn v8_inspector__Client__IMPL__runMessageLoopOnPause(
+    _: *c.InspectorClientImpl,
+    data: *anyopaque,
+    contextGroupId: c_int,
+) callconv(.C) void {
+    _ = contextGroupId;
+    std.log.debug("InspectorClient runMessageLoopOnPause called", .{});
+    const inspector = Inspector.fromData(data);
+    _ = inspector;
+    // TODO
+}
+
+pub export fn v8_inspector__Client__IMPL__quitMessageLoopOnPause(
+    _: *c.InspectorClientImpl,
+    data: *anyopaque,
+) callconv(.C) void {
+    std.log.debug("InspectorClient quitMessageLoopOnPause called", .{});
+    const inspector = Inspector.fromData(data);
+    _ = inspector;
+    // TODO
+}
+
+pub export fn v8_inspector__Client__IMPL__runIfWaitingForDebugger(
+    _: *c.InspectorClientImpl,
+    data: *anyopaque,
+    contextGroupId: c_int,
+) callconv(.C) void {
+    _ = contextGroupId;
+    std.log.debug("InspectorClient runIfWaitingForDebugger called", .{});
+    const inspector = Inspector.fromData(data);
+    _ = inspector;
+    // TODO
+}
+
+// TODO: move params to C types
+pub export fn v8_inspector__Client__IMPL__consoleAPIMessage(
+    _: *c.InspectorClientImpl,
+    data: *anyopaque,
+    contextGroupId: c_int,
+    _: c.MessageErrorLevel,
+    _: *c.StringView,
+    _: *c.StringView,
+    _: c_uint,
+    _: c_uint,
+    _: *c.StackTrace,
+) callconv(.C) void {
+    _ = contextGroupId;
+    std.log.debug("InspectorClient consoleAPIMessage called", .{});
+    const inspector = Inspector.fromData(data);
+    _ = inspector;
+    // TODO
+}
+
+// InspectorChannel
+
+pub const InspectorChannel = struct {
+    handle: *c.InspectorChannelImpl,
+
+    // callbacks
+    ctx: *anyopaque,
+    onNotif: onNotifFn = undefined,
+    onResp: onRespFn = undefined,
+
+    pub const onNotifFn = *const fn (ctx: *anyopaque, msg: []const u8) void;
+    pub const onRespFn = *const fn (ctx: *anyopaque, call_id: u32, msg: []const u8) void;
+
+    pub fn init(
+        ctx: *anyopaque,
+        onResp: onRespFn,
+        onNotif: onNotifFn,
+        isolate: Isolate,
+    ) InspectorChannel {
+        const handle = c.v8_inspector__Channel__IMPL__CREATE(isolate.handle);
+        return .{
+            .handle = handle,
+            .ctx = ctx,
+            .onResp = onResp,
+            .onNotif = onNotif,
+        };
+    }
+
+    pub fn deinit(self: InspectorChannel) void {
+        c.v8_inspector__Channel__IMPL__DELETE(self.handle);
+    }
+
+    fn setInspector(self: InspectorChannel, inspector: *Inspector) void {
+        c.v8_inspector__Channel__IMPL__SET_DATA(self.handle, inspector);
+    }
+
+    fn resp(self: InspectorChannel, call_id: u32, msg: []const u8) void {
+        self.onResp(self.ctx, call_id, msg);
+    }
+
+    fn notif(self: InspectorChannel, msg: []const u8) void {
+        self.onNotif(self.ctx, msg);
+    }
+};
+
+pub export fn v8_inspector__Channel__IMPL__sendResponse(
+    _: *c.InspectorChannelImpl,
+    data: *anyopaque,
+    call_id: c_int,
+    msg: [*c]u8,
+    length: usize,
+) callconv(.C) void {
+    const inspector = Inspector.fromData(data);
+    inspector.channel.resp(@as(u32, @intCast(call_id)), msg[0..length]);
+}
+
+pub export fn v8_inspector__Channel__IMPL__sendNotification(
+    _: *c.InspectorChannelImpl,
+    data: *anyopaque,
+    msg: [*c]u8,
+    length: usize,
+) callconv(.C) void {
+    const inspector = Inspector.fromData(data);
+    inspector.channel.notif(msg[0..length]);
+}
+
+pub export fn v8_inspector__Channel__IMPL__flushProtocolNotifications(
+    _: *c.InspectorChannelImpl,
+    data: *anyopaque,
+) callconv(.C) void {
+    std.log.debug("InspectorChannel flushProtocolNotifications called", .{});
+    const inspector = Inspector.fromData(data);
+    _ = inspector;
+    // TODO
+}
+
+// InspectorSession
+
+pub const InspectorSession = struct {
+    handle: *c.InspectorSession,
+
+    pub fn dispatchProtocolMessage(
+        self: InspectorSession,
+        isolate: Isolate,
+        msg: []const u8,
+    ) void {
+        c.v8_inspector__Session__dispatchProtocolMessage(
+            self.handle,
+            isolate.handle,
+            msg.ptr,
+            msg.len,
+        );
+    }
+};
