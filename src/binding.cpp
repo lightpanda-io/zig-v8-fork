@@ -1554,11 +1554,29 @@ v8_inspector::V8InspectorSession *v8_inspector__Inspector__Connect(
   return u.release();
 }
 void v8_inspector__Inspector__ContextCreated(v8_inspector::V8Inspector *self,
+                                             const char *name, int name_len,
+                                             const char *origin, int origin_len,
+					     const char *auxData, int auxData_len,
                                              int contextGroupId,
                                              const v8::Context &ctx) {
-  v8_inspector::StringView ctxView(toStringView("inspector"));
+  // create context info
+  std::string name_str;
+  name_str.assign(name, name_len);
+  v8_inspector::StringView name_view(toStringView(name_str));
   auto context = ptr_to_local(&ctx);
-  v8_inspector::V8ContextInfo info(context, contextGroupId, ctxView);
+  v8_inspector::V8ContextInfo info(context, contextGroupId, name_view);
+
+  // add origin to context info
+  std::string origin_str;
+  origin_str.assign(origin, origin_len);
+  info.origin = toStringView(origin_str);
+
+  // add auxData to context info
+  std::string auxData_str;
+  auxData_str.assign(auxData, auxData_len);
+  info.auxData = toStringView(auxData_str);
+
+  // call contextCreated
   self->contextCreated(info);
 }
 
@@ -1575,7 +1593,7 @@ void v8_inspector__Session__dispatchProtocolMessage(
 
 // InspectorChannel
 
-v8_inspector__Channel__IMPL * v8_inspector__Channel__IMPL__CREATE(v8::Isolate *isolate) {  
+v8_inspector__Channel__IMPL * v8_inspector__Channel__IMPL__CREATE(v8::Isolate *isolate) {
   auto channel = new v8_inspector__Channel__IMPL();
   channel->isolate = isolate;
   return channel;

@@ -2343,8 +2343,33 @@ pub const Inspector = struct {
         return InspectorSession{ .handle = session };
     }
 
-    pub fn contextCreated(self: Inspector, ctx: Context) void {
-        c.v8_inspector__Inspector__ContextCreated(self.handle, contextGroupId, ctx.handle);
+    pub fn contextCreated(
+        self: Inspector,
+        ctx: Context,
+        name: []const u8,
+        origin: []const u8,
+        auxData: ?[]const u8,
+    ) void {
+        var auxData_ptr: [*c]const u8 = undefined;
+        var auxData_len: usize = undefined;
+        if (auxData) |data| {
+            auxData_ptr = data.ptr;
+            auxData_len = data.len;
+        } else {
+            auxData_ptr = null;
+            auxData_len = 0;
+        }
+        c.v8_inspector__Inspector__ContextCreated(
+            self.handle,
+            name.ptr,
+            name.len,
+            origin.ptr,
+            origin.len,
+            auxData_ptr,
+            auxData_len,
+            contextGroupId,
+            ctx.handle,
+        );
     }
 };
 
