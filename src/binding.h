@@ -961,7 +961,9 @@ InspectorSession* v8_inspector__Inspector__Connect(
     Inspector *self, int contextGroupId,
     InspectorChannelImpl *channel,
     ClientTrustLevel level);
-void v8_inspector__Inspector__ContextCreated(
-    Inspector *self,
-    int contextGroupId,
+void v8_inspector__Inspector__ContextCreated(Inspector *self, const char *name,
+                                             usize name_len, const char *origin,
+                                             usize origin_len,
+					     const char *auxData, const usize auxData_len,
+                                             int contextGroupId,
     const Context* context);
