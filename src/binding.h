@@ -895,3 +895,75 @@ const String* v8__JSON__Stringify(
 
 // Misc.
 void v8__base__SetDcheckFunction(void (*func)(const char*, int, const char*));
+
+// Inspector
+// ---------
+
+typedef enum ClientTrustLevel {
+  kUntrusted,
+  kFullyTrusted,
+} ClientTrustLevel;
+
+typedef struct StringView StringView;
+
+// InspectorChannel
+
+typedef struct InspectorChannel InspectorChannel;
+typedef struct InspectorChannelImpl {
+  void* data;
+} InspectorChannelImpl;
+InspectorChannelImpl *v8_inspector__Channel__IMPL__CREATE(Isolate *isolate);
+void v8_inspector__Channel__IMPL__DELETE(InspectorChannelImpl *self);
+void v8_inspector__Channel__IMPL__SET_DATA(InspectorChannelImpl* self, void *data);
+
+void v8_inspector__Channel__IMPL__sendResponse(
+    InspectorChannelImpl *self, void *data,
+    int callId, char *message, size_t length);
+void v8_inspector__Channel__IMPL__sendNotification(
+    InspectorChannelImpl *self, void *data,
+    char *message, size_t length);
+void v8_inspector__Channel__IMPL__flushProtocolNotifications(
+    InspectorChannelImpl *self, void *data);
+
+// InspectorClient
+
+typedef struct InspectorClient InspectorClient;
+typedef struct InspectorClientImpl {
+  void* data;
+} InspectorClientImpl;
+InspectorClientImpl *v8_inspector__Client__IMPL__CREATE();
+void v8_inspector__Client__IMPL__DELETE(InspectorClientImpl *self);
+void v8_inspector__Client__IMPL__SET_DATA(InspectorClientImpl* self, void *data);
+
+int64_t v8_inspector__Client__IMPL__generateUniqueId(InspectorClientImpl *self);
+void v8_inspector__Client__IMPL__runMessageLoopOnPause(
+    InspectorClientImpl *self, int contextGroupId);
+void v8_inspector__Client__IMPL__quitMessageLoopOnPause(
+    InspectorClientImpl *self);
+void v8_inspector__Client__IMPL__runIfWaitingForDebugger(
+    InspectorClientImpl *self, int contextGroupId);
+void v8_inspector__Client__IMPL__consoleAPIMessage(
+    InspectorClientImpl *self, int contextGroupId, MessageErrorLevel level,
+    StringView *message, StringView *url, unsigned lineNumber,
+    unsigned columnNumber, StackTrace *StackTrace);
+
+// InspectorSession
+
+typedef struct InspectorSession InspectorSession;
+void v8_inspector__Session__dispatchProtocolMessage(InspectorSession *session, Isolate *isolate, const char* msg, usize msg_len);
+
+// Inspector
+typedef struct Inspector Inspector;
+Inspector* v8_inspector__Inspector__Create(Isolate* isolate, InspectorClientImpl* client);
+void v8_inspector__Inspector__DELETE(Inspector *self);
+
+InspectorSession* v8_inspector__Inspector__Connect(
+    Inspector *self, int contextGroupId,
+    InspectorChannelImpl *channel,
+    ClientTrustLevel level);
+void v8_inspector__Inspector__ContextCreated(Inspector *self, const char *name,
+                                             usize name_len, const char *origin,
+                                             usize origin_len,
+					     const char *auxData, const usize auxData_len,
+                                             int contextGroupId,
+    const Context* context);
