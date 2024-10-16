@@ -1,7 +1,7 @@
 #include "include/v8-inspector.h"
 
 #ifndef V8INSPECTORIMPL_H
-#define V8INSPECTORIMPLH
+#define V8INSPECTORIMPL_H
 
 // InspectorChannel Implementation
 struct v8_inspector__Channel__IMPL
