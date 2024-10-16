@@ -35,6 +35,8 @@ jobs:
         run: |
           echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
 
+      - run: sudo apt-get install -yq libglib2.0-dev
+
       - run: zig build get-tools
       - run: zig build get-v8
       - run: zig build -Doptimize=ReleaseSafe
