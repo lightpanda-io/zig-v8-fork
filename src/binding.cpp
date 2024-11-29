@@ -590,6 +590,11 @@ void v8__ScriptCompiler__CachedData__DELETE(v8::ScriptCompiler::CachedData* self
     delete self;
 }
 
+// UnboundScript
+v8::Script* v8__UnboundScript__BindToCurrentContext(const v8::UnboundScript* unboundedScript) {
+    return local_to_ptr(ptr_to_local(unboundedScript)->BindToCurrentContext());
+}
+
 const v8::Module* v8__ScriptCompiler__CompileModule(
         v8::Isolate* isolate,
         v8::ScriptCompiler::Source* source,
@@ -602,6 +607,25 @@ const v8::Module* v8__ScriptCompiler__CompileModule(
 size_t v8__ScriptCompiler__CompilationDetails__SIZEOF() {
     return sizeof(v8::ScriptCompiler::CompilationDetails);
 }
+
+const v8::Script* v8__ScriptCompiler__Compile  (
+        const v8::Context& context,
+        v8::ScriptCompiler::Source* source,
+        v8::ScriptCompiler::CompileOptions options,
+        v8::ScriptCompiler::NoCacheReason reason) {
+    v8::MaybeLocal<v8::Script> maybe_local = v8::ScriptCompiler::Compile(ptr_to_local(&context), source, options, reason);
+    return maybe_local_to_ptr(maybe_local);
+}
+
+const v8::UnboundScript* v8__ScriptCompiler__CompileUnboundScript  (
+        v8::Isolate* isolate,
+        v8::ScriptCompiler::Source* source,
+        v8::ScriptCompiler::CompileOptions options,
+        v8::ScriptCompiler::NoCacheReason reason) {
+    v8::MaybeLocal<v8::UnboundScript> maybe_local = v8::ScriptCompiler::CompileUnboundScript(isolate, source, options, reason);
+    return maybe_local_to_ptr(maybe_local);
+}
+
 // Module
 
 v8::Module::Status v8__Module__GetStatus(const v8::Module& self) {

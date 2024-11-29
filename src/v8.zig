@@ -1855,6 +1855,24 @@ pub const ScriptCompiler = struct {
             };
         } else return error.JsException;
     }
+
+    /// [v8]
+    /// Compiles the specified script (context-independent). Cached data as
+    /// part of the source object can be optionally produced to be consumed
+    /// later to speed up compilation of identical source scripts.
+    pub fn CompileUnboundScript(iso: Isolate, src: *ScriptCompilerSource, options: ScriptCompiler.CompileOptions, reason: ScriptCompiler.NoCacheReason) !UnboundScript {
+        const mb_res = c.v8__ScriptCompiler__CompileUnboundScript(
+            iso.handle,
+            &src.inner,
+            @intFromEnum(options),
+            @intFromEnum(reason),
+        );
+        if (mb_res) |res| {
+            return UnboundScript{
+                .handle = res,
+            };
+        } else return error.JsException;
+    }
 };
 
 pub const Script = struct {
@@ -1876,6 +1894,20 @@ pub const Script = struct {
         if (c.v8__Script__Run(self.handle, ctx.handle)) |value| {
             return Value{
                 .handle = value,
+            };
+        } else return error.JsException;
+    }
+};
+
+pub const UnboundScript = struct {
+    const Self = @This();
+
+    handle: *const c.UnboundScript,
+
+    pub fn bindToCurrentContext(self: Self) !Script {
+        if (c.v8__UnboundScript__BindToCurrentContext(self.handle)) |script| {
+            return Script{
+                .handle = script,
             };
         } else return error.JsException;
     }

@@ -15,11 +15,13 @@ typedef struct Module Module;
 typedef struct FunctionTemplate FunctionTemplate;
 typedef struct Message Message;
 typedef struct Context Context;
+typedef struct UnboundScript UnboundScript;
+typedef struct Script Script;
 // Internally, all Value types have a base InternalAddress struct.
 typedef uintptr_t InternalAddress;
 // Super type.
 typedef Data Value;
-typedef Value Object;
+typedef Value Object;a
 typedef Value String;
 typedef Value Function;
 typedef Value Number;
@@ -978,6 +980,13 @@ typedef struct CompilationDetails {
 
 typedef bool (*CompileHintCallback)(int, void*);
 
+// Script
+Script* v8__Script__Compile(const Context* context, const String* src, const ScriptOrigin* origin);
+Value* v8__Script__Run(const Script* script, const Context* context);
+
+// UnboundScript
+Script* v8__UnboundScript__BindToCurrentContext(const UnboundScript* unboundedScript);
+
 // ScriptCompiler
 typedef struct ScriptCompilerSource {
     String* source_string;
@@ -1032,11 +1041,16 @@ const Module* v8__ScriptCompiler__CompileModule(
     ScriptCompilerSource* source,
     CompileOptions options,
     NoCacheReason reason);
-
-// Script
-typedef struct Script Script;
-Script* v8__Script__Compile(const Context* context, const String* src, const ScriptOrigin* origin);
-Value* v8__Script__Run(const Script* script, const Context* context);
+const Script* v8__ScriptCompiler__Compile(
+    const Context* context,
+    ScriptCompilerSource* source,
+    CompileOptions options,
+    NoCacheReason reason);
+const UnboundScript* v8__ScriptCompiler__CompileUnboundScript(
+    Isolate* isolate,
+    ScriptCompilerSource* source,
+    CompileOptions options,
+    NoCacheReason reason);
 
 // Module
 typedef enum ModuleStatus {
