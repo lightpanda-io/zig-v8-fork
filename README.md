@@ -24,7 +24,7 @@ Static libs are built and released with [Github Actions](https://github.com/fuba
 \* Time is measured on standard Github instances.
 
 ## System Requirements
-- Zig compiler (0.13.0). You can get that [here](https://ziglang.org/download/).
+- Zig compiler (0.14.0-dev). Clone and build https://github.com/ziglang/zig.
 - Python 3 (2.7 seems to work as well)
 - For native macOS builds:
   - XCode (You won't need this when using zig's c++ toolchain!)<br/>
@@ -50,17 +50,17 @@ zig build get-v8
 
 # Build, resulting static library should be at:
 # v8-build/{target}/{debug/release}/ninja/obj/zig/libc_v8.a
-# On windows, use msvc: zig build -Drelease-safe -Dtarget=x86_64-windows-msvc
-zig build -Drelease-safe
+# On windows, use msvc: zig build zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-windows-msvc
+zig build -Doptimize=ReleaseSafe
 ```
 ## Demo
 ```sh
 # shell.zig is a simple JS repl.
 # Assumes you've already built v8.
-zig build run -Dpath="src/shell.zig" -Drelease-safe
+zig build run -Dpath="src/shell.zig" -Doptimize=ReleaseSafe
 
 # If you built v8 using the zig toolchain, you'll need to add the flag here as well.
-zig build run -Dpath="src/shell.zig" -Drelease-safe -Dzig-toolchain
+zig build run -Dpath="src/shell.zig" -Doptimize=ReleaseSafe -Dzig-toolchain
 ```
 
 ## Cross Compiling
@@ -70,13 +70,13 @@ With Zig's toolchain, we can build V8 from libstdc++ that's bundled with zig and
 # Assumes you've fetched tools and v8 sources. See above build steps.
 # Resulting static lib will be at:
 # v8-build/aarch64-macos/release/ninja/obj/zig/libc_v8.a
-zig build -Drelease-safe -Dtarget=aarch64-macos-gnu -Dzig-toolchain
+zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos-gnu -Dzig-toolchain
 ```
 
 ### Cross compile to Windows with gnu (mingw64)
 Zig comes with mingw64 source and headers so you'll be able to target Windows without MSVC.
 ```sh
-zig build -Drelease-safe -Dtarget=x86_64-windows-gnu -Dzig-toolchain
+zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-windows-gnu -Dzig-toolchain
 ```
 
 ## Usage

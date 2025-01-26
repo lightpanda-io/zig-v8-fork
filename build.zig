@@ -127,7 +127,7 @@ fn createV8_Build(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.bui
 
     if (use_zig_tc) {
         // Set target and cpu for building the lib.
-        // TODO: If mcpu is equavalent to -Dcpu then use that instead
+        // TODO: If mcpu is equivalent to -Dcpu then use that instead
         try zig_cc.append(b.fmt("zig cc --target={s} -mcpu=baseline", .{try target.result.zigTriple(b.allocator)}));
         try zig_cxx.append(b.fmt("zig c++ --target={s} -mcpu=baseline", .{try target.result.zigTriple(b.allocator)}));
 
@@ -228,7 +228,7 @@ fn createV8_Build(b: *std.Build, target: std.Build.ResolvedTarget, mode: std.bui
         }
         if (target.result.os.tag == .linux and target.result.cpu.arch == .aarch64) {
             // On linux aarch64, we can not use the clang version provided in v8 sources
-            // as it's built for x86_64 (TODO: using Rosetta2 for Linux VM on Apple Sillicon?)
+            // as it's built for x86_64 (TODO: using Rosetta2 for Linux VM on Apple Silicon?)
             // Instead we can use a clang system version
             // as long as we use the same version number (currently clang-16)
             // Currently v8 uses clang-16 but Debian/Ubuntu are using older versions
@@ -332,8 +332,7 @@ const CheckV8DepsStep = struct {
         return step;
     }
 
-    fn make(step: *Step, prog_node: *std.Progress.Node) anyerror!void {
-        _ = prog_node;
+    fn make(step: *Step, _: Step.MakeOptions) anyerror!void {
         const output = try step.evalChildProcess(&.{ "clang", "--version" });
         print("clang: {s}", .{output});
 
@@ -439,8 +438,7 @@ const MakePathStep = struct {
         return new;
     }
 
-    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
-        _ = prog_node;
+    fn make(step: *Step, _: Step.MakeOptions) anyerror!void {
         const self: *Self = @fieldParentPtr("step", step);
         try std.fs.cwd().makePath(self.b.pathFromRoot(self.path));
     }
@@ -470,8 +468,7 @@ const CopyFileStep = struct {
         return new;
     }
 
-    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
-        _ = prog_node;
+    fn make(step: *Step, _: Step.MakeOptions) anyerror!void {
         const self: *Self = @fieldParentPtr("step", step);
         try std.fs.copyFileAbsolute(self.src_path, self.dst_path, .{});
     }
@@ -641,8 +638,7 @@ pub const GetV8SourceStep = struct {
         }
     }
 
-    fn make(step: *Step, prog_node: std.Progress.Node) anyerror!void {
-        _ = prog_node;
+    fn make(step: *Step, _: Step.MakeOptions) anyerror!void {
         const self: *Self = @fieldParentPtr("step", step);
 
         // Pull the minimum source we need by looking at DEPS.

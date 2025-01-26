@@ -780,7 +780,7 @@ pub const Function = struct {
         } else return null;
     }
 
-    // Equavalent to js "new".
+    // Equivalent to js "new".
     pub fn initInstance(self: Self, ctx: Context, args: []const Value) ?Object {
         const c_args = @as(?[*]const ?*c.Value, @ptrCast(args.ptr));
         if (c.v8__Function__NewInstance(self.handle, ctx.handle, @as(c_int, @intCast(args.len)), c_args)) |ret| {
@@ -1770,7 +1770,7 @@ pub const Module = struct {
         } else return error.JsException;
     }
 
-    /// Evaulates the module, assumes module has been instantiated.
+    /// Evaluates the module, assumes module has been instantiated.
     /// [v8]
     /// Evaluates the module and its dependencies.
     ///
@@ -2312,7 +2312,7 @@ pub const Inspector = struct {
     // Set when a context is created.
     ctx_handle: ?*const C_Context = null,
 
-    const RndGen = std.rand.DefaultPrng;
+    const RndGen = std.Random.DefaultPrng;
 
     const contextGroupId = 1;
     const clientTrustLevel = 1;
