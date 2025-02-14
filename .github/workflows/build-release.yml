@@ -15,11 +15,16 @@ env:
 
 jobs:
   build-x86_64-linux:
-    env:
-      OS: linux
-      ARCH: x86_64
+    strategy:
+      matrix:
+        os:
+        - system: ubuntu-22.04
+          env: [OS: linux, ARCH: x86_64 ]
+        - system: ubuntu-22.04-arm
+          env: [OS: linux, ARCH: aarch64 ]
 
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.system }}
+    env: ${{ matrix.env }}
     steps:
       - uses: mlugg/setup-zig@v1
         with:
