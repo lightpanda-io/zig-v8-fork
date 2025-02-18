@@ -816,7 +816,7 @@ pub const Function = struct {
 pub fn Persistent(comptime T: type) type {
     comptime var handleT: type = undefined;
     comptime {
-        for (@typeInfo(T).Struct.fields) |field| {
+        for (@typeInfo(T).@"struct".fields) |field| {
             if (!std.mem.eql(u8, field.name, "handle")) {
                 continue;
             }
