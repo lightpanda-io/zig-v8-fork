@@ -19,7 +19,7 @@ jobs:
       OS: linux
       ARCH: x86_64
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: mlugg/setup-zig@v1
         with:
@@ -35,7 +35,9 @@ jobs:
         run: |
           echo "version=`cat V8_REVISION`" >> "$GITHUB_OUTPUT"
 
-      - run: sudo apt-get install -yq libglib2.0-dev
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -yq libglib2.0-dev
 
       - run: zig build get-tools
       - run: zig build get-v8
@@ -119,4 +121,3 @@ jobs:
         with:
           allowUpdates: true
           artifacts: libc_v8_${{steps.read-version.outputs.version}}_${{ env.OS }}_${{ env.ARCH }}.a
-
