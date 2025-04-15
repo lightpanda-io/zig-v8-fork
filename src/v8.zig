@@ -2503,12 +2503,6 @@ pub const Inspector = struct {
         );
         self.ctx_handle = ctx.handle;
     }
-
-    pub fn resetContextGroup(
-        self: *Inspector,
-    ) void {
-        c.v8_inspector__Inspector__resetContextGroup(self.handle, contextGroupId);
-    }
 };
 
 // InspectorClient

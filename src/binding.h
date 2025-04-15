@@ -1064,7 +1064,6 @@ void v8_inspector__Inspector__ContextCreated(Inspector *self, const char *name,
                                              const char *auxData, const usize auxData_len,
                                              int contextGroupId,
     const Context* context);
-void v8_inspector__Inspector__resetContextGroup(Inspector *self, int contextGroupId) ;
 
 // RemoteObject
 void v8_inspector__RemoteObject__DELETE(RemoteObject *self);

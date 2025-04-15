@@ -1682,10 +1682,6 @@ void v8_inspector__Inspector__ContextCreated(v8_inspector::V8Inspector *self,
   self->contextCreated(info);
 }
 
-void v8_inspector__Inspector__resetContextGroup(v8_inspector::V8Inspector *self, int contextGroupId) {
-    self->resetContextGroup(contextGroupId);
-}
-
 // InspectorSession
 
 void v8_inspector__Session__DELETE(v8_inspector::V8InspectorSession* self) {
