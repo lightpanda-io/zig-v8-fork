@@ -338,6 +338,7 @@ void v8__Context__SetEmbedderData(
     const Context* self,
     int idx,
     const Value* val);
+int v8__Context__DebugContextId(const Context* self);
 
 // Boolean
 const Boolean* v8__Boolean__New(
@@ -1063,6 +1064,7 @@ void v8_inspector__Inspector__ContextCreated(Inspector *self, const char *name,
                                              const char *auxData, const usize auxData_len,
                                              int contextGroupId,
     const Context* context);
+void v8_inspector__Inspector__resetContextGroup(Inspector *self, int contextGroupId) ;
 
 // RemoteObject
 void v8_inspector__RemoteObject__DELETE(RemoteObject *self);

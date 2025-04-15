@@ -557,6 +557,10 @@ pub const Context = struct {
     pub fn setEmbedderData(self: Self, idx: u32, val: anytype) void {
         c.v8__Context__SetEmbedderData(self.handle, @as(c_int, @intCast(idx)), getValueHandle(val));
     }
+
+    pub fn debugContextId(self: Self) i32 {
+        return c.v8__Context__DebugContextId(self.handle);
+    }
 };
 
 pub const PropertyCallbackInfo = struct {
@@ -2498,6 +2502,12 @@ pub const Inspector = struct {
             ctx.handle,
         );
         self.ctx_handle = ctx.handle;
+    }
+
+    pub fn resetContextGroup(
+        self: *Inspector,
+    ) void {
+        c.v8_inspector__Inspector__resetContextGroup(self.handle, contextGroupId);
     }
 };
 

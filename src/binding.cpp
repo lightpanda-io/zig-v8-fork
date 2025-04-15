@@ -7,6 +7,7 @@
 #include "src/api/api.h"
 #include "src/inspector/protocol/Runtime.h"
 #include "src/inspector/v8-string-conversions.h"
+#include "src/debug/debug-interface.h"
 
 #include "inspector.h"
 
@@ -379,6 +380,10 @@ void v8__Context__SetEmbedderData(
         int idx,
         const v8::Value& val) {
     ptr_to_local(&self)->SetEmbedderData(idx, ptr_to_local(&val));
+}
+
+int v8__Context__DebugContextId(const v8::Context& self) {
+    return v8::debug::GetContextId(ptr_to_local(&self));
 }
 
 // ScriptOrigin
@@ -1675,6 +1680,10 @@ void v8_inspector__Inspector__ContextCreated(v8_inspector::V8Inspector *self,
 
   // call contextCreated
   self->contextCreated(info);
+}
+
+void v8_inspector__Inspector__resetContextGroup(v8_inspector::V8Inspector *self, int contextGroupId) {
+    self->resetContextGroup(contextGroupId);
 }
 
 // InspectorSession
