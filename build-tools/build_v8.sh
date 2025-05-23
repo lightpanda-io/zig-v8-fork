@@ -17,20 +17,21 @@ if [ "${OS}" = "mac" ]; then
 fi
 OUT=out/${OUT_OS_PATH}/${MODE}
 
+EXTRA_ARGS=""
 if [[ ${MODE} == "release" ]]; then
   IS_DEBUG="false"
   SYMBOL_LEVEL="0"
 else
   IS_DEBUG="true"
   SYMBOL_LEVEL="1"
+  EXTRA_ARGS="v8_enable_object_print = true"
 fi
 
 mkdir -p src/zig
 cp BUILD.gn src/zig/
 
-EXTRA_ARGS=""
 if [ "${OS}" = "linux" ] && [ "${ARCH}" == "arm64" ]; then
-  EXTRA_ARGS="clang_base_path=\"/usr/lib/llvm-21\" clang_use_chrome_plugins=false treat_warnings_as_errors=false"
+  EXTRA_ARGS="${EXTRA_ARGS} clang_base_path=\"/usr/lib/llvm-21\" clang_use_chrome_plugins=false treat_warnings_as_errors=false"
 fi
 
 TARGET_ARCH=${ARCH}
@@ -49,7 +50,8 @@ tools/gn \
     host_cpu=\"${TARGET_ARCH}\"
     is_debug=${IS_DEBUG}
     symbol_level=${SYMBOL_LEVEL}
-    is_official_build=false ${EXTRA_ARGS}
+    is_official_build=false
+    ${EXTRA_ARGS}
   "
 
 tools/ninja -C ${OUT} "c_v8"

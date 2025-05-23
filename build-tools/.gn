@@ -36,8 +36,6 @@ default_args = {
   v8_embedder_string = "-lightpanda"
 
   v8_enable_sandbox = false
-  v8_enable_javascript_promise_hooks = true
-  v8_promise_internal_field_count = 1
   v8_use_external_startup_data = false
 
   v8_enable_pointer_compression = true
@@ -96,4 +94,7 @@ default_args = {
   use_relative_vtables_abi = false
 
   icu_use_data_file = false
+
+  v8_enable_turbofan = true
+  v8_enable_webassembly = false
 }
