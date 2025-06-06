@@ -501,6 +501,26 @@ pub const HandleScope = struct {
     }
 };
 
+pub const SealHandleScope = struct {
+    const Self = @This();
+
+    inner: c.SealHandleScope,
+
+    /// [Notes]
+    /// This starts a new stack frame to record local objects created.
+    /// Since deinit depends on the inner pointer being the same, init should construct in place.
+    pub fn init(self: *Self, isolate: Isolate) void {
+        c.v8__SealHandleScope__CONSTRUCT(&self.inner, isolate.handle);
+    }
+
+    /// [Notes]
+    /// This pops the scope frame and allows V8 to mark/free local objects created since SealHandleScope.init.
+    /// In C++ code, this would happen automatically when the SealHandleScope var leaves the current scope.
+    pub fn deinit(self: *Self) void {
+        c.v8__SealHandleScope__DESTRUCT(&self.inner);
+    }
+};
+
 pub const Context = struct {
     const Self = @This();
 
@@ -2886,8 +2906,8 @@ pub const InspectorChannel = struct {
     onNotif: onNotifFn = undefined,
     onResp: onRespFn = undefined,
 
-    pub const onNotifFn = *const fn (ctx: *anyopaque, msg: []const u8) void;
-    pub const onRespFn = *const fn (ctx: *anyopaque, call_id: u32, msg: []const u8) void;
+    pub const onNotifFn = *const fn (ctx: *anyopaque, msg: *const c.String) void;
+    pub const onRespFn = *const fn (ctx: *anyopaque, call_id: u32, msg: *const c.String) void;
 
     pub fn init(
         ctx: *anyopaque,
@@ -2912,11 +2932,11 @@ pub const InspectorChannel = struct {
         c.v8_inspector__Channel__IMPL__SET_DATA(self.handle, inspector);
     }
 
-    fn resp(self: InspectorChannel, call_id: u32, msg: []const u8) void {
+    fn resp(self: InspectorChannel, call_id: u32, msg: *const c.String) void {
         self.onResp(self.ctx, call_id, msg);
     }
 
-    fn notif(self: InspectorChannel, msg: []const u8) void {
+    fn notif(self: InspectorChannel, msg: *const c.String) void {
         self.onNotif(self.ctx, msg);
     }
 };
@@ -2925,21 +2945,19 @@ pub export fn v8_inspector__Channel__IMPL__sendResponse(
     _: *c.InspectorChannelImpl,
     data: *anyopaque,
     call_id: c_int,
-    msg: [*c]u8,
-    length: usize,
+    msg: *const c.String,
 ) callconv(.C) void {
     const inspector = Inspector.fromData(data);
-    inspector.channel.resp(@as(u32, @intCast(call_id)), msg[0..length]);
+    inspector.channel.resp(@as(u32, @intCast(call_id)), msg);
 }
 
 pub export fn v8_inspector__Channel__IMPL__sendNotification(
     _: *c.InspectorChannelImpl,
     data: *anyopaque,
-    msg: [*c]u8,
-    length: usize,
+    msg: *const c.String,
 ) callconv(.C) void {
     const inspector = Inspector.fromData(data);
-    inspector.channel.notif(msg[0..length]);
+    inspector.channel.notif(msg);
 }
 
 pub export fn v8_inspector__Channel__IMPL__flushProtocolNotifications(

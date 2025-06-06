@@ -1724,15 +1724,14 @@ static inline v8_inspector::StringView toStringView(const std::string &str) {
     return toStringView(str.c_str(), str.length());
 }
 
-static inline std::string fromStringView(v8::Isolate* isolate, const v8_inspector::StringView stringView) {
+static v8::Local<v8::String> fromStringView(v8::Isolate* isolate, const v8_inspector::StringView stringView) {
   int length = static_cast<int>(stringView.length());
   v8::Local<v8::String> message = (
         stringView.is8Bit()
           ? v8::String::NewFromOneByte(isolate, stringView.characters8(), v8::NewStringType::kNormal, length)
           : v8::String::NewFromTwoByte(isolate, stringView.characters16(), v8::NewStringType::kNormal, length)
       ).ToLocalChecked();
-  v8::String::Utf8Value result(isolate, message);
-  return *result;
+  return message;
 }
 
 /// Allocates a string as utf8 on the allocator without \0 terminator, for use in Zig.
@@ -1997,10 +1996,10 @@ void v8_inspector__Channel__IMPL__SET_DATA(v8_inspector__Channel__IMPL *self, vo
 // NOTE: zig project should provide those implementations with C-ABI functions
 void v8_inspector__Channel__IMPL__sendResponse(
     v8_inspector__Channel__IMPL* self, void* data,
-    int callId, const char* message, size_t length);
+    int callId, v8::Local<v8::String> resp);
 void v8_inspector__Channel__IMPL__sendNotification(
     v8_inspector__Channel__IMPL* self, void *data,
-    const char* msg, size_t length);
+    v8::Local<v8::String> notif);
 void v8_inspector__Channel__IMPL__flushProtocolNotifications(
     v8_inspector__Channel__IMPL* self, void *data);
 
@@ -2008,13 +2007,13 @@ void v8_inspector__Channel__IMPL__flushProtocolNotifications(
 } // extern "C"
 void v8_inspector__Channel__IMPL::sendResponse(
     int callId, std::unique_ptr<v8_inspector::StringBuffer> message) {
-  const std::string resp = fromStringView(this->isolate, message->string());
-  return v8_inspector__Channel__IMPL__sendResponse(this, this->data, callId, resp.c_str(), resp.length());
+  const v8::Local<v8::String> resp = fromStringView(this->isolate, message->string());
+  return v8_inspector__Channel__IMPL__sendResponse(this, this->data, callId, resp);
 }
 void v8_inspector__Channel__IMPL::sendNotification(
     std::unique_ptr<v8_inspector::StringBuffer> message) {
-  const std::string notif = fromStringView(this->isolate, message->string());
-   return v8_inspector__Channel__IMPL__sendNotification(this, this->data, notif.c_str(), notif.length());
+  const v8::Local<v8::String> notif = fromStringView(this->isolate, message->string());
+   return v8_inspector__Channel__IMPL__sendNotification(this, this->data, notif);
 }
 void v8_inspector__Channel__IMPL::flushProtocolNotifications() {
   return v8_inspector__Channel__IMPL__flushProtocolNotifications(this, this->data);

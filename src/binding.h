@@ -1098,10 +1098,10 @@ void v8_inspector__Channel__IMPL__SET_DATA(InspectorChannelImpl* self, void *dat
 
 void v8_inspector__Channel__IMPL__sendResponse(
     InspectorChannelImpl *self, void *data,
-    int callId, char *message, size_t length);
+    int callId, String resp);
 void v8_inspector__Channel__IMPL__sendNotification(
     InspectorChannelImpl *self, void *data,
-    char *message, size_t length);
+    String notif);
 void v8_inspector__Channel__IMPL__flushProtocolNotifications(
     InspectorChannelImpl *self, void *data);
 
