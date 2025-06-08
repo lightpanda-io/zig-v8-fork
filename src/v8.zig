@@ -2245,6 +2245,18 @@ pub const Primitive = struct {
     }
 };
 
+pub const StringView = struct {
+    handle: *const c.StringView,
+
+    pub fn length(self: StringView) usize {
+        return c.v8__StringView__Length(self.handle);
+    }
+
+    pub fn bytes(self: StringView) [*c]const u8 {
+        return c.v8__StringView__Bytes(self.handle);
+    }
+};
+
 pub fn initUndefined(isolate: Isolate) Primitive {
     return .{
         .handle = c.v8__Undefined(isolate.handle).?,
@@ -2906,8 +2918,8 @@ pub const InspectorChannel = struct {
     onNotif: onNotifFn = undefined,
     onResp: onRespFn = undefined,
 
-    pub const onNotifFn = *const fn (ctx: *anyopaque, msg: *const c.String) void;
-    pub const onRespFn = *const fn (ctx: *anyopaque, call_id: u32, msg: *const c.String) void;
+    pub const onNotifFn = *const fn (ctx: *anyopaque, msg: StringView) void;
+    pub const onRespFn = *const fn (ctx: *anyopaque, call_id: u32, msg: StringView) void;
 
     pub fn init(
         ctx: *anyopaque,
@@ -2932,12 +2944,12 @@ pub const InspectorChannel = struct {
         c.v8_inspector__Channel__IMPL__SET_DATA(self.handle, inspector);
     }
 
-    fn resp(self: InspectorChannel, call_id: u32, msg: *const c.String) void {
-        self.onResp(self.ctx, call_id, msg);
+    fn resp(self: InspectorChannel, call_id: u32, msg: *const c.StringView) void {
+        self.onResp(self.ctx, call_id, .{.handle = msg});
     }
 
-    fn notif(self: InspectorChannel, msg: *const c.String) void {
-        self.onNotif(self.ctx, msg);
+    fn notif(self: InspectorChannel, msg: *const c.StringView) void {
+        self.onNotif(self.ctx, .{.handle = msg});
     }
 };
 
@@ -2945,7 +2957,7 @@ pub export fn v8_inspector__Channel__IMPL__sendResponse(
     _: *c.InspectorChannelImpl,
     data: *anyopaque,
     call_id: c_int,
-    msg: *const c.String,
+    msg: *const c.StringView,
 ) callconv(.C) void {
     const inspector = Inspector.fromData(data);
     inspector.channel.resp(@as(u32, @intCast(call_id)), msg);
@@ -2954,7 +2966,7 @@ pub export fn v8_inspector__Channel__IMPL__sendResponse(
 pub export fn v8_inspector__Channel__IMPL__sendNotification(
     _: *c.InspectorChannelImpl,
     data: *anyopaque,
-    msg: *const c.String,
+    msg: *const c.StringView,
 ) callconv(.C) void {
     const inspector = Inspector.fromData(data);
     inspector.channel.notif(msg);

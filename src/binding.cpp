@@ -6,7 +6,9 @@
 #include "include/v8.h"
 #include "src/api/api.h"
 #include "src/inspector/protocol/Runtime.h"
+#include "src/inspector/string-util.h"
 #include "src/inspector/v8-string-conversions.h"
+
 #include "src/debug/debug-interface.h"
 
 #include "inspector.h"
@@ -1724,15 +1726,15 @@ static inline v8_inspector::StringView toStringView(const std::string &str) {
     return toStringView(str.c_str(), str.length());
 }
 
-static v8::Local<v8::String> fromStringView(v8::Isolate* isolate, const v8_inspector::StringView stringView) {
-  int length = static_cast<int>(stringView.length());
-  v8::Local<v8::String> message = (
-        stringView.is8Bit()
-          ? v8::String::NewFromOneByte(isolate, stringView.characters8(), v8::NewStringType::kNormal, length)
-          : v8::String::NewFromTwoByte(isolate, stringView.characters16(), v8::NewStringType::kNormal, length)
-      ).ToLocalChecked();
-  return message;
-}
+// static v8::Local<v8::String> fromStringView(v8::Isolate* isolate, const v8_inspector::StringView stringView) {
+//   int length = static_cast<int>(stringView.length());
+//   v8::Local<v8::String> message = (
+//         stringView.is8Bit()
+//           ? v8::String::NewFromOneByte(isolate, stringView.characters8(), v8::NewStringType::kNormal, length)
+//           : v8::String::NewFromTwoByte(isolate, stringView.characters16(), v8::NewStringType::kNormal, length)
+//       ).ToLocalChecked();
+//   return message;
+// }
 
 /// Allocates a string as utf8 on the allocator without \0 terminator, for use in Zig.
 /// The strings pointer and length should therefore be returned together
@@ -1996,10 +1998,10 @@ void v8_inspector__Channel__IMPL__SET_DATA(v8_inspector__Channel__IMPL *self, vo
 // NOTE: zig project should provide those implementations with C-ABI functions
 void v8_inspector__Channel__IMPL__sendResponse(
     v8_inspector__Channel__IMPL* self, void* data,
-    int callId, v8::Local<v8::String> resp);
+    int callId, v8_inspector::StringView resp);
 void v8_inspector__Channel__IMPL__sendNotification(
-    v8_inspector__Channel__IMPL* self, void *data,
-    v8::Local<v8::String> notif);
+    v8_inspector__Channel__IMPL *self, void *data,
+    v8_inspector::StringView notif);
 void v8_inspector__Channel__IMPL__flushProtocolNotifications(
     v8_inspector__Channel__IMPL* self, void *data);
 
@@ -2007,13 +2009,12 @@ void v8_inspector__Channel__IMPL__flushProtocolNotifications(
 } // extern "C"
 void v8_inspector__Channel__IMPL::sendResponse(
     int callId, std::unique_ptr<v8_inspector::StringBuffer> message) {
-  const v8::Local<v8::String> resp = fromStringView(this->isolate, message->string());
-  return v8_inspector__Channel__IMPL__sendResponse(this, this->data, callId, resp);
+  return v8_inspector__Channel__IMPL__sendResponse(this, this->data, callId, message->string());
 }
 void v8_inspector__Channel__IMPL::sendNotification(
     std::unique_ptr<v8_inspector::StringBuffer> message) {
-  const v8::Local<v8::String> notif = fromStringView(this->isolate, message->string());
-   return v8_inspector__Channel__IMPL__sendNotification(this, this->data, notif);
+  // const v8::Local<v8::String> msg = v8_inspector::toV8String(this->isolate, message->string());
+   return v8_inspector__Channel__IMPL__sendNotification(this, this->data, message->string());
 }
 void v8_inspector__Channel__IMPL::flushProtocolNotifications() {
   return v8_inspector__Channel__IMPL__flushProtocolNotifications(this, this->data);
@@ -2026,6 +2027,7 @@ extern "C" {
 void v8_inspector__Channel__sendResponse(
     v8_inspector::V8Inspector::Channel* self, int callId,
     v8_inspector::StringBuffer* message) {
+
   self->sendResponse(
       callId,
       static_cast<std::unique_ptr<v8_inspector::StringBuffer>>(message));
@@ -2033,7 +2035,7 @@ void v8_inspector__Channel__sendResponse(
 void v8_inspector__Channel__sendNotification(
     v8_inspector::V8Inspector::Channel* self,
     v8_inspector::StringBuffer* message) {
-  self->sendNotification(
+    self->sendNotification(
       static_cast<std::unique_ptr<v8_inspector::StringBuffer>>(message));
 }
 void v8_inspector__Channel__flushProtocolNotifications(
@@ -2146,4 +2148,13 @@ void v8_inspector__Client__consoleAPIMessage(
                           columnNumber, stackTrace);
 }
 
+size_t v8__StringView__Length(const v8_inspector::StringView* self) {
+    return self->length();
+}
+
+const uint8_t* v8__StringView__Bytes(const v8_inspector::StringView* self) {
+    return self->characters8();
+}
+
 } // extern "C"
+

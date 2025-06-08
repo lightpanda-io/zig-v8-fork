@@ -1227,3 +1227,7 @@ void v8_inspector__RemoteObject__setPreview(RemoteObject* self, ObjectPreview* p
 bool v8_inspector__RemoteObject__hasCustomPreview(RemoteObject* self);
 const CustomPreview* v8_inspector__RemoteObject__getCustomPreview(RemoteObject* self);
 void v8_inspector__RemoteObject__setCustomPreview(RemoteObject* self, CustomPreview* customPreview);
+
+
+uint32_t v8__StringView__Length(const StringView* self);
+const uint8_t* v8__StringView__Bytes(const StringView* self);
