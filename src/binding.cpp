@@ -8,6 +8,7 @@
 #include "src/inspector/protocol/Runtime.h"
 #include "src/inspector/v8-string-conversions.h"
 #include "src/debug/debug-interface.h"
+#include "src/snapshot/snapshot.h"
 
 #include "inspector.h"
 
@@ -2028,6 +2029,33 @@ void v8_inspector__Channel__IMPL__sendNotification(
     const char* msg, size_t length);
 void v8_inspector__Channel__IMPL__flushProtocolNotifications(
     v8_inspector__Channel__IMPL* self, void *data);
+
+// SnapshotCreatorImpl
+
+// Initialize and enter an isolate, and set it up for serialization. The
+// isolate is either created from scratch or from an existing snapshot. The
+// caller keeps ownership of the argument snapshot.
+
+void v8__SnapshotCreator__CONSTRUCT(v8::SnapshotCreator* ptr, const v8::Isolate::CreateParams& params) {
+    new (ptr) v8::SnapshotCreator(params.external_references, nullptr);
+}
+
+v8::Isolate* v8__SnapshotCreator__getIsolate(v8::SnapshotCreator& self) {
+    return self.GetIsolate();
+}
+
+// Add additional context to be included in the snapshot blob. The snapshot
+// will include the global proxy.
+// Returns the index of the context in the snapshot blob.
+size_t v8__SnapshotCreator__addContext(v8::SnapshotCreator& self, const v8::Context& ctx) {
+    return self.AddContext(ptr_to_local(&ctx));
+}
+
+v8::StartupData v8__SnapshotCreator__createBlob(v8::SnapshotCreator& self) {
+    return self.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kKeep);
+}
+
+void v8__SnapshotCreator__DESTRUCT(v8::SnapshotCreator* self) { self->~SnapshotCreator(); }
 
 // c++ implementation (just wrappers around the C/zig functions)
 } // extern "C"

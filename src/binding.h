@@ -1238,3 +1238,13 @@ void v8_inspector__RemoteObject__setPreview(RemoteObject* self, ObjectPreview* p
 bool v8_inspector__RemoteObject__hasCustomPreview(RemoteObject* self);
 const CustomPreview* v8_inspector__RemoteObject__getCustomPreview(RemoteObject* self);
 void v8_inspector__RemoteObject__setCustomPreview(RemoteObject* self, CustomPreview* customPreview);
+
+// SnapshotCreator
+typedef struct SnapshotCreator {
+    void* impl_;
+} SnapshotCreator;
+void v8__SnapshotCreator__CONSTRUCT(SnapshotCreator* self, const CreateParams* params);
+Isolate* v8__SnapshotCreator__getIsolate(SnapshotCreator* self);
+size_t v8__SnapshotCreator__addContext(SnapshotCreator* self, const Context* ctx);
+StartupData v8__SnapshotCreator__createBlob(SnapshotCreator* self);
+void v8__SnapshotCreator__DESTRUCT(SnapshotCreator* self);

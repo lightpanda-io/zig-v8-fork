@@ -2113,7 +2113,6 @@ pub const Value = struct {
         return c.v8__Value__IsString(self.handle);
     }
 
-
     pub fn isSymbol(self: Self) bool {
         return c.v8__Value__IsSymbol(self.handle);
     }
@@ -3118,3 +3117,36 @@ pub export fn zigAlloc(self: *anyopaque, bytes: usize) callconv(.C) ?[*]u8 {
     const allocated_bytes = allocator.alloc(u8, bytes) catch return null;
     return allocated_bytes.ptr;
 }
+pub const StartupData = c.StartupData;
+
+pub const SnapshotCreator = struct {
+    const Self = @This();
+
+    inner: c.SnapshotCreator,
+
+    pub fn init(params: *const c.CreateParams) Self {
+        var inner: c.SnapshotCreator = undefined;
+        c.v8__SnapshotCreator__CONSTRUCT(&inner, params);
+        return .{
+            .inner = inner,
+        };
+    }
+
+    pub fn getIsolate(self: *Self) Isolate {
+        return .{
+            .handle = c.v8__SnapshotCreator__getIsolate(&self.inner).?,
+        };
+    }
+
+    pub fn addContext(self: *Self, ctx: Context) usize {
+        return c.v8__SnapshotCreator__addContext(&self.inner, ctx.handle);
+    }
+
+    pub fn createBlob(self: *Self) StartupData {
+        return c.v8__SnapshotCreator__createBlob(&self.inner);
+    }
+
+    pub fn deinit(self: *Self) void {
+        c.v8__SnapshotCreator__DESTRUCT(&self.inner);
+    }
+};
