@@ -3119,6 +3119,10 @@ pub export fn zigAlloc(self: *anyopaque, bytes: usize) callconv(.C) ?[*]u8 {
 }
 pub const StartupData = c.StartupData;
 
+pub const C_SerializeInternalFieldsCallback = c.SerializeInternalFieldsCallback;
+pub const C_SerializeContextDataCallback = c.SerializeContextDataCallback;
+pub const C_SerializeAPIWrapperCallback = c.SerializeAPIWrapperCallback;
+
 pub const SnapshotCreator = struct {
     const Self = @This();
 
@@ -3136,6 +3140,26 @@ pub const SnapshotCreator = struct {
         return .{
             .handle = c.v8__SnapshotCreator__getIsolate(&self.inner).?,
         };
+    }
+
+    pub fn setDefaultContext(self: *Self, ctx: Context) void {
+        c.v8__SnapshotCreator__setDefaultContext(&self.inner, ctx.handle);
+    }
+
+    pub fn setDefaultContextWithCallbacks(
+        self: *Self,
+        ctx: Context,
+        si: C_SerializeInternalFieldsCallback,
+        scd: C_SerializeContextDataCallback,
+        sapiw: C_SerializeAPIWrapperCallback,
+    ) void {
+        c.v8__SnapshotCreator__setDefaultContextWithCallbacks(
+            &self.inner,
+            ctx.handle,
+            si,
+            scd,
+            sapiw,
+        );
     }
 
     pub fn addContext(self: *Self, ctx: Context) usize {

@@ -272,6 +272,25 @@ typedef struct StartupData {
     int raw_size;
 } StartupData;
 
+// Callback types for snapshot serialization
+typedef StartupData (*SerializeInternalFieldsCallbackFunction)(Object* holder, int index, void* data);
+typedef struct SerializeInternalFieldsCallback {
+    SerializeInternalFieldsCallbackFunction callback;
+    void* data;
+} SerializeInternalFieldsCallback;
+
+typedef StartupData (*SerializeContextDataCallbackFunction)(Context* context, int index, void* data);
+typedef struct SerializeContextDataCallback {
+    SerializeContextDataCallbackFunction callback;
+    void* data;
+} SerializeContextDataCallback;
+
+typedef StartupData (*SerializeAPIWrapperCallbackFunction)(Object* holder, void* cpp_heap_pointer, void* data);
+typedef struct SerializeAPIWrapperCallback {
+    SerializeAPIWrapperCallbackFunction callback;
+    void* data;
+} SerializeAPIWrapperCallback;
+
 typedef struct ResourceConstraints {
     usize code_range_size_;
     usize max_old_generation_size_;
@@ -1244,6 +1263,13 @@ typedef struct SnapshotCreator {
     void* impl_;
 } SnapshotCreator;
 void v8__SnapshotCreator__CONSTRUCT(SnapshotCreator* self, const CreateParams* params);
+void v8__SnapshotCreator__setDefaultContext(SnapshotCreator* self, const Context* ctx);
+void v8__SnapshotCreator__setDefaultContextWithCallbacks(
+    SnapshotCreator* self,
+    const Context* ctx,
+    SerializeInternalFieldsCallback internal_fields,
+    SerializeContextDataCallback context_data,
+    SerializeAPIWrapperCallback api_wrapper);
 Isolate* v8__SnapshotCreator__getIsolate(SnapshotCreator* self);
 size_t v8__SnapshotCreator__addContext(SnapshotCreator* self, const Context* ctx);
 StartupData v8__SnapshotCreator__createBlob(SnapshotCreator* self);

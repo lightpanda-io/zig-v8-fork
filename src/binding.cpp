@@ -2030,7 +2030,7 @@ void v8_inspector__Channel__IMPL__sendNotification(
 void v8_inspector__Channel__IMPL__flushProtocolNotifications(
     v8_inspector__Channel__IMPL* self, void *data);
 
-// SnapshotCreatorImpl
+// SnapshotCreator
 
 // Initialize and enter an isolate, and set it up for serialization. The
 // isolate is either created from scratch or from an existing snapshot. The
@@ -2044,12 +2044,27 @@ v8::Isolate* v8__SnapshotCreator__getIsolate(v8::SnapshotCreator& self) {
     return self.GetIsolate();
 }
 
+void v8__SnapshotCreator__setDefaultContext(v8::SnapshotCreator& self, const v8::Context& ctx) {
+    self.SetDefaultContext(ptr_to_local(&ctx));
+}
+
 // Add additional context to be included in the snapshot blob. The snapshot
 // will include the global proxy.
 // Returns the index of the context in the snapshot blob.
 size_t v8__SnapshotCreator__addContext(v8::SnapshotCreator& self, const v8::Context& ctx) {
     return self.AddContext(ptr_to_local(&ctx));
 }
+
+void v8__SnapshotCreator__setDefaultContextWithCallbacks(
+    v8::SnapshotCreator& self,
+    const v8::Context& ctx,
+    v8::SerializeInternalFieldsCallback internal_fields,
+    v8::SerializeContextDataCallback context_data,
+    v8::SerializeAPIWrapperCallback api_wrapper) {
+
+    self.SetDefaultContext(ptr_to_local(&ctx), internal_fields, context_data, api_wrapper);
+}
+
 
 v8::StartupData v8__SnapshotCreator__createBlob(v8::SnapshotCreator& self) {
     return self.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kKeep);
