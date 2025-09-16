@@ -23,8 +23,13 @@ case $(uname -m) in
   *)      fail "unsupported architecture: $(uname -m)"
 esac
 
-case "$OSTYPE" in
-  darwin*)  OS="mac" ;;
-  linux*)   OS="linux" ;;
-  *)        fail "unsupported platform: ${OSTYPE}"
+: "${OS:=unset}"
+case "$OS" in
+  unset)
+    case "$OSTYPE" in
+      darwin*)  OS="mac" ;;
+      linux*)   OS="linux" ;;
+      *)        fail "unsupported platform: ${OSTYPE}"
+    esac
+    ;;
 esac

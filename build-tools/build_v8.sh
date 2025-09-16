@@ -32,6 +32,9 @@ EXTRA_ARGS=""
 if [ "${OS}" = "linux" ] && [ "${ARCH}" == "arm64" ]; then
   EXTRA_ARGS="clang_base_path=\"/usr/lib/llvm-21\" clang_use_chrome_plugins=false treat_warnings_as_errors=false"
 fi
+if [ "${OS}" = "ios" ]; then
+  EXTRA_ARGS="v8_enable_pointer_compression=false v8_enable_webassembly=false"
+fi
 
 TARGET_ARCH=${ARCH}
 if [ "${ARCH}" = "amd64" ]; then

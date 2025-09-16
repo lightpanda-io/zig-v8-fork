@@ -132,6 +132,7 @@ pub fn build(b: *std.Build) !void {
         const os = switch (target.result.os.tag) {
             .linux => "linux",
             .macos => "macos",
+            .ios => "ios",
             else => return error.UnsupportedPlatform,
         };
 
