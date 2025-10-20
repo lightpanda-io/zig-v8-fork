@@ -68,6 +68,18 @@ let
     installPhase = '''';
   };
 
+  v8-prebuild = pkgs.runCommand "v8-prebuild-${depsJson.v8_revision}" { } ''
+    cp -r ${v8-deps} ./v8
+    chmod -R u+w ./v8
+    cd v8
+    cp ${../src/binding.cpp} src/
+    cp ${../src/inspector.h} src/
+    mkdir -p src/zig
+    cp ${../build-tools/BUILD.gn} src/zig/
+    cp ${../build-tools/.gn} ./
+    cp -r . $out/
+  '';
+
   v8 = pkgs.stdenv.mkDerivation {
     pname = "v8";
     version = depsJson.v8_revision;
@@ -135,5 +147,6 @@ in
   v8-source = v8-source;
   v8-deps = v8-deps;
   v8-clang = v8-clang;
+  v8-prebuild = v8-prebuild;
   v8 = v8;
 }
