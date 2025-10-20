@@ -2,6 +2,79 @@
     .name = .v8,
     .paths = .{""},
     .version = "0.0.0",
-    .dependencies = .{},
     .fingerprint = 0x10be7411eb47d7c5,
+    .dependencies = .{
+        .v8_src = .{
+            .url = "https://chromium.googlesource.com/v8/v8.git/+archive/refs/tags/14.0.365.4.tar.gz",
+            .hash = "N-V-__8AALlzQwl7St7Orc_fL6KkIljQWIChhx11J8vYwZ4S",
+        },
+        .build = .{
+            .url = "https://chromium.googlesource.com/chromium/src/build.git/+archive/5aa72841882c9df27ba6fdfb92c4659e1c273396.tar.gz",
+            .hash = "N-V-__8AAEXZbABWWyAY0kXWzrmVTkqmqd58hk0KuFcIHjO8",
+        },
+        .buildtools = .{
+            .url = "https://chromium.googlesource.com/chromium/src/buildtools.git/+archive/40f96b0b4abe41bacb0838d723afdad715f89a8e.tar.gz",
+            .hash = "N-V-__8AAJ6VAwBiAxvxXOFu5WWdydvvpHrcu5Jl9cXAwPs2",
+        },
+        .@"third_party/dragonbox/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/jk-jeon/dragonbox.git/+archive/6c7c925b571d54486b9ffae8d9d18a822801cbda.tar.gz",
+            .hash = "N-V-__8AAOP2TQA88AVlJPVhEppelfF4JU5BXBCETmoTQJkd",
+        },
+        .@"third_party/fp16/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/Maratyszcza/FP16.git/+archive/0a92994d729ff76a58f692d3028ca1b64b145d91.tar.gz",
+            .hash = "N-V-__8AAPRiBwBHv9btEWjPRJO11PX1lgrFYE4i4sw3iA8W",
+        },
+        .@"third_party/fast_float/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/fastfloat/fast_float.git/+archive/cb1d42aaa1e14b09e1452cfdef373d051b8c02a4.tar.gz",
+            .hash = "N-V-__8AACVhBgDIbzwResfUnh0Erz2x2r-jVQDXpSS4Rxl1",
+        },
+        .@"third_party/simdutf" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/third_party/simdutf/+archive/c6c377dbb834a65fbea1423a670d82ecc2d576d2.tar.gz",
+            .hash = "N-V-__8AAGH0LgDZ4q1Sp0cq46Zn4STkc3jNpcBHGctln7Rt",
+        },
+        .@"third_party/googletest/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/google/googletest.git/+archive/373af2e3df71599b87a40ce0e37164523849166b.tar.gz",
+            .hash = "N-V-__8AALKiPgCQ4AHaQS6m-GGjKK4srJyY3kx2areN-0dH",
+        },
+        .@"third_party/highway/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/google/highway.git/+archive/00fe003dac355b979f36157f9407c7c46448958e.tar.gz",
+            .hash = "N-V-__8AAGANgACf5Xvpam9oxRZ-58ylLzDFriMbmq_iU8gT",
+        },
+        .@"third_party/icu" = .{
+            .url = "https://chromium.googlesource.com/chromium/deps/icu.git/+archive/1b2e3e8a421efae36141a7b932b41e315b089af8.tar.gz",
+            .hash = "N-V-__8AAF21zgxk4NNSo5RIYn3P_h5vQ66EywYxF4EYGGHU",
+        },
+        .@"third_party/jinja2" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/third_party/jinja2.git/+archive/c3027d884967773057bf74b957e3fea87e5df4d7.tar.gz",
+            .hash = "N-V-__8AAFp6BwAfGOiDkcw1F62b0xWNuT9vWH7aFd_dDGU-",
+        },
+        .@"third_party/libc++/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx.git/+archive/1ce2525ae355a30a61bacd896916c3416d1827b1.tar.gz",
+            .hash = "N-V-__8AAAiogQNzxLQQ1uDKtbMLF188g5OaXj3Gtf7faEe9",
+        },
+        .@"third_party/libc++abi/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi.git/+archive/a6c815c69d55ec59d020abde636754d120b402ad.tar.gz",
+            .hash = "N-V-__8AAKz8YQC0lbUtGR3unsC2-0D5HqoBMOEm-DKoo3nR",
+        },
+        .@"third_party/llvm-libc/src" = .{
+            .url = "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libc.git/+archive/866857ce9ca0e6fc6b37fbd1725c3c70c98b0837.tar.gz",
+            .hash = "N-V-__8AAJlvhAEaO-UocwZIRvnsvHhytfCudE-dXJthz8sw",
+        },
+        .@"third_party/markupsafe" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/third_party/markupsafe.git/+archive/4256084ae14175d38a3ff7d739dca83ae49ccec6.tar.gz",
+            .hash = "N-V-__8AABJqAAD3T-lPpXNhBHi2YfVoTr7C1i_lkBbKP58K",
+        },
+        .@"third_party/zlib" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/third_party/zlib.git/+archive/363a126ed293970f3df97ee5f760cba29a29e193.tar.gz",
+            .hash = "N-V-__8AAGx3IQB8tzp9scmwQDosTeJUJuYIRH7ENLyefeVM",
+        },
+        .@"tools/clang" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/tools/clang.git/+archive/ef1872e2e1012694ffbeeed668ff2c127517b7f0.tar.gz",
+            .hash = "N-V-__8AAG_rLQDftlAJfLnW0w1Xi7vV21HG4dcjKiAdK1VU",
+        },
+        .@"third_party/abseil-cpp" = .{
+            .url = "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git/+archive/5f6b05eac05371bee829951e64f3fd35854e9311.tar.gz",
+            .hash = "N-V-__8AAD9-3QCGQvtpivYKGocdQ7Ym6p1ewNCUOa0BSB2Y",
+        },
+    },
 }

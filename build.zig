@@ -24,94 +24,14 @@ pub fn build(b: *std.Build) !void {
     v8_module.addIncludePath(b.path("src"));
     v8_module.addImport("default_exports", build_opts.createModule());
 
-    const root_path = LazyPath{ .cwd_relative = "." };
-    const build_path = LazyPath{ .cwd_relative = "./v8/" };
+    const prepare_v8_step = createPrepareV8Step(b);
+    const build_v8_step = createBuildV8Step(b, prepare_v8_step);
 
-    const build_module = b.createModule(.{
-        .root_source_file = b.path("src/main_build.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    const prepare_step = b.step("prepare-v8", "Prepare V8 source code and dependencies");
+    prepare_step.dependOn(prepare_v8_step);
 
-    {
-        // Get V8
-        const get_v8 = b.addExecutable(.{
-            .name = "get-v8",
-            .root_module = build_module,
-        });
-
-        const mkdir_v8_dir = blk: {
-            var mkdir_v8_dir = b.addSystemCommand(&.{ "mkdir", "-p" });
-            mkdir_v8_dir.addDirectoryArg(build_path);
-            mkdir_v8_dir.setCwd(root_path);
-            break :blk mkdir_v8_dir;
-        };
-
-        const cp_build_files = blk: {
-            // trailing slash for rsync src is important, but Zig really doesn't
-            // want to add it, so this is what I came up with.
-            const build_tools = b.path("build-tools");
-            const build_tools_path = b.fmt("{f}/", .{build_tools.getPath3(b, null)});
-            var cp_build_files = b.addSystemCommand(&.{ "rsync", "-r", build_tools_path, "v8" });
-            cp_build_files.setCwd(root_path);
-            cp_build_files.step.dependOn(&mkdir_v8_dir.step);
-            break :blk cp_build_files;
-        };
-
-        const run_get_tools = blk: {
-            var run_get_tools = b.addSystemCommand(&.{ "bash", "get_tools.sh" });
-            run_get_tools.setCwd(build_path);
-            run_get_tools.step.dependOn(&cp_build_files.step);
-            break :blk run_get_tools;
-        };
-
-        const run_v8_source = blk: {
-            var run_v8_source = b.addSystemCommand(&.{ "bash", "get_v8.sh" });
-            run_v8_source.setCwd(build_path);
-            run_v8_source.step.dependOn(&run_get_tools.step);
-            break :blk run_v8_source;
-        };
-
-        get_v8.step.dependOn(&run_v8_source.step);
-
-        // as an installation step
-        b.installArtifact(get_v8);
-
-        // as a command
-        const run_cmd = b.addRunArtifact(get_v8);
-
-        // step
-        const run_step = b.step("get-v8", "Get v8 source + compilation tools");
-        run_step.dependOn(&run_cmd.step);
-    }
-
-    {
-        // build V8
-        const build_v8 = b.addExecutable(.{
-            .name = "build-v8",
-            .root_module = build_module,
-        });
-
-        const run_build = blk: {
-            var run_build = b.addSystemCommand(&.{ "bash", "build_v8.sh" });
-            run_build.addDirectoryArg(b.path("src"));
-            run_build.addArg(if (optimize == .Debug) "debug" else "release");
-            run_build.setCwd(build_path);
-            break :blk run_build;
-        };
-
-        build_v8.step.dependOn(&run_build.step);
-
-        // as an installation step
-        b.installArtifact(build_v8);
-
-        // as a command
-        const run_cmd = b.addRunArtifact(build_v8);
-
-        // step
-        const run_step = b.step("build-v8", "Build v8");
-        run_step.dependOn(&run_cmd.step);
-    }
+    const build_step = b.step("build-v8", "Prepare V8 source code and dependencies");
+    build_step.dependOn(build_v8_step);
 
     {
         const test_module = b.createModule(.{
@@ -151,5 +71,197 @@ pub fn build(b: *std.Build) !void {
         const run_tests = b.addRunArtifact(tests);
         const tests_step = b.step("test", "Run unit tests");
         tests_step.dependOn(&run_tests.step);
+    }
+}
+
+fn createPrepareV8Step(b: *std.Build) *std.Build.Step {
+    const step = b.allocator.create(std.Build.Step) catch @panic("OOM");
+    step.* = std.Build.Step.init(.{ .id = .custom, .name = "prepare-v8", .owner = b, .makeFn = prepareV8Sources });
+    return step;
+}
+
+fn prepareV8Sources(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
+    const b = step.owner;
+    const allocator = b.allocator;
+
+    std.fs.cwd().makeDir("v8") catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+
+    const v8_dep = b.dependency("v8_src", .{});
+    const v8_path = b.fmt("{f}/", .{v8_dep.path("").getPath3(b, null)});
+
+    try ensureDirectoryExists("v8");
+    try copyDirectory(allocator, v8_path, "v8");
+
+    const deps = [_][]const u8{
+        "build",
+        "buildtools",
+        "third_party/dragonbox/src",
+        "third_party/fp16/src",
+        "third_party/fast_float/src",
+        "third_party/simdutf",
+        "third_party/googletest/src",
+        "third_party/highway/src",
+        "third_party/icu",
+        "third_party/jinja2",
+        "third_party/libc++/src",
+        "third_party/libc++abi/src",
+        "third_party/llvm-libc/src",
+        "third_party/markupsafe",
+        "third_party/zlib",
+        "tools/clang",
+        "third_party/abseil-cpp",
+    };
+
+    for (deps) |dep_name| {
+        const dep = b.dependency(dep_name, .{});
+        const dep_path = dep.path("");
+
+        const target_path = b.fmt("v8/src/{s}", .{dep_name});
+        try ensureDirectoryExists(target_path);
+        try copyDirectory(allocator, b.fmt("{f}/", .{dep_path.getPath3(b, null)}), target_path);
+    }
+
+    try copyFile(allocator, stringFilePathFromRoot(b, "src/binding.cpp"), "v8/src/binding.cpp");
+    try copyFile(allocator, stringFilePathFromRoot(b, "src/inspector.h"), "v8/src/inspector.h");
+
+    // Copy build configuration files
+    try ensureDirectoryExists("v8/src/zig");
+    try copyFile(allocator, stringFilePathFromRoot(b, "build-tools/BUILD.gn"), "v8/src/zig/BUILD.gn");
+    try copyFile(allocator, stringFilePathFromRoot(b, "build-tools/.gn"), "v8/.gn");
+
+    try ensureDirectoryExists("v8/src/build/config/");
+    // Create gclient_args.gni
+    const gclient_args =
+        \\# Generated by Zig build system
+    ;
+    try writeFile("v8/src/build/config/gclient_args.gni", gclient_args);
+}
+
+fn createBuildV8Step(b: *std.Build, prepare_step: *std.Build.Step) *std.Build.Step {
+    const step = b.allocator.create(std.Build.Step) catch @panic("OOM");
+    step.* = std.Build.Step.init(.{
+        .id = .custom,
+        .name = "build-v8",
+        .owner = b,
+        .makeFn = buildV8,
+    });
+    step.dependOn(prepare_step);
+    return step;
+}
+
+fn buildV8(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
+    const b = step.owner;
+    const allocator = b.allocator;
+
+    var gn_args: std.ArrayList(u8) = .empty;
+    defer gn_args.deinit(allocator);
+
+    //   v8-fhs -c '${gn}/gn \
+    //     --root=src \
+    //     --root-target=//zig \
+    //     --dotfile=.gn \
+    //     gen out \
+    //     --args="
+    //       is_debug=false
+    //       symbol_level=0
+    //       is_official_build=false
+
+    //       clang_base_path=\"${v8-clang}\"
+    //       clang_use_chrome_plugins=false
+    //       treat_warnings_as_errors=false
+    //     "'
+    // '';
+
+    try gn_args.appendSlice(allocator, "is_debug=false\n");
+    try gn_args.appendSlice(allocator, "symbol_level=0\n");
+    try gn_args.appendSlice(allocator, "is_official_build=false\n");
+    try gn_args.appendSlice(allocator, "clang_use_chrome_plugins=false\n");
+    try gn_args.appendSlice(allocator, "treat_warnings_as_errors=false\n");
+
+    const gn_result = try runCommand(
+        allocator,
+        &[_][]const u8{
+            "gn",
+            "--root=src",
+            "--root-target=//zig",
+            "--dotfile=.gn",
+            "gen",
+            "out",
+            b.fmt("--args={s}", .{gn_args.items}),
+        },
+        "v8",
+    );
+
+    if (gn_result.term.Exited != 0) {
+        std.log.err("GN generation failed: {s}", .{gn_result.stderr});
+        return error.GNFailed;
+    }
+}
+
+fn ensureDirectoryExists(path: []const u8) !void {
+    std.fs.cwd().makePath(path) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+}
+
+fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8, cwd: ?[]const u8) !std.process.Child.RunResult {
+    return try std.process.Child.run(.{
+        .allocator = allocator,
+        .argv = argv,
+        .cwd = if (cwd) |dir| dir else null,
+    });
+}
+
+fn stringFilePathFromRoot(b: *std.Build, path: []const u8) []const u8 {
+    return b.fmt("{f}", .{b.path(path).getPath3(b, null)});
+}
+
+fn stringDirPathFromRoot(b: *std.Build, path: []const u8) []const u8 {
+    return b.fmt("{f}/", .{b.path(path).getPath3(b, null)});
+}
+
+fn writeFile(path: []const u8, content: []const u8) !void {
+    const file = try std.fs.cwd().createFile(path, .{});
+    defer file.close();
+    try file.writeAll(content);
+}
+
+fn copyFile(allocator: std.mem.Allocator, src: []const u8, dst: []const u8) !void {
+    const src_file = try std.fs.cwd().openFile(src, .{});
+    defer src_file.close();
+
+    const data = try src_file.readToEndAlloc(allocator, std.math.maxInt(usize));
+    defer allocator.free(data);
+
+    const dst_file = try std.fs.cwd().createFile(dst, .{});
+    defer dst_file.close();
+
+    try dst_file.writeAll(data);
+}
+
+fn copyDirectory(allocator: std.mem.Allocator, src: []const u8, dst: []const u8) !void {
+    var src_dir = try std.fs.cwd().openDir(src, .{ .iterate = true });
+    defer src_dir.close();
+
+    var dest_dir = try std.fs.cwd().openDir(dst, .{});
+    defer dest_dir.close();
+
+    var walker = try src_dir.walk(allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |entry| {
+        switch (entry.kind) {
+            .file => {
+                try entry.dir.copyFile(entry.basename, dest_dir, entry.path, .{});
+            },
+            .directory => {
+                try dest_dir.makeDir(entry.path);
+            },
+            else => return error.UnexpectedEntryKind,
+        }
     }
 }

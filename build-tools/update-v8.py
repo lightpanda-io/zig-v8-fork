@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import sys
-import json
 import base64
+import subprocess
 import urllib.request
 
+# List of the dependencies we require from V8.
 required_deps = [
     'build',
     'third_party/jinja2',
@@ -25,20 +26,15 @@ required_deps = [
     'third_party/dragonbox/src'
 ]
 
-import subprocess
-import tempfile
-import os
+def get_zig_hash_from_url(url: str):
+    result = subprocess.run([
+        'zig', 'fetch', url
+    ], capture_output=True, text=True, check=True)
+    return result.stdout.strip()
 
-
-def get_nix_hash_from_git(url: str, rev: str):
-    try:
-        result = subprocess.run([
-            'nix-prefetch-git', '--url', url, '--rev', rev, '--quiet'
-        ], capture_output=True, text=True, check=True)
-        data = json.loads(result.stdout)
-        return data['sha256']
-    except:
-        return ""
+    
+def zig_fmt_file(path: str):
+    subprocess.run(['zig', 'fmt', path ])
 
 def fetch_deps_file(v8_revision: str) -> str:
     req = urllib.request.urlopen(f'https://chromium.googlesource.com/v8/v8/+/{v8_revision}/DEPS?format=TEXT')
@@ -46,8 +42,10 @@ def fetch_deps_file(v8_revision: str) -> str:
     decoded_bytes = base64.b64decode(file_bytes)
     return decoded_bytes.decode('utf-8')
 
-def generate_deps_data(deps_content: str, v8_revision: str, v8_hash: str) -> dict:
+def generate_deps_data(deps_content: str, v8_revision: str) -> dict:
     """"Parse DEPS file content and return dependency information"""
+
+    print(f"Generating dependency data...")
 
     def Var(arg):
         if arg == 'chromium_url':
@@ -70,7 +68,6 @@ def generate_deps_data(deps_content: str, v8_revision: str, v8_hash: str) -> dic
 
     result = {
         "v8_revision": v8_revision,
-        "v8_hash": v8_hash,
         "dependencies": {}
     }
 
@@ -111,14 +108,45 @@ def generate_deps_data(deps_content: str, v8_revision: str, v8_hash: str) -> dic
             print(f"  - {path}: {reason}")
 
     for i, (path, url, rev) in enumerate(git_deps, 1):
-        hash = get_nix_hash_from_git(url, rev)
         result["dependencies"][path] = {
             "url": url,
             "rev": rev,
-            "sha256": hash,
         }
     
     return result
+
+def generate_zon_file(deps_data) -> str:
+    zon = f""".{{
+    .name = .v8,
+    .paths = .{{""}},
+    .version = \"0.0.0\",
+    .fingerprint = 0x10be7411eb47d7c5,
+    .dependencies = .{{
+"""
+
+    print(f"Generating Zon data...")
+
+    def append_zon_entry(zon: str, name: str, url: str, hash: str) -> str: 
+        zon += f"\t\t.@\"{name}\" = .{{\n"
+        zon += f"\t\t\t.url = \"{url}\",\n"
+        zon += f"\t\t\t.hash = \"{hash}\",\n"
+        zon += "\t\t},\n"
+        return zon
+
+    print(f"Hashing v8...")
+    v8_url = f"https://chromium.googlesource.com/v8/v8.git/+archive/refs/tags/{deps_data["v8_revision"]}.tar.gz"
+    v8_hash = get_zig_hash_from_url(v8_url)
+    zon = append_zon_entry(zon, "v8_src", v8_url, v8_hash)
+
+    for path, dep in deps_data["dependencies"].items():
+        print(f"Hashing {path}...")
+        archive_url = f"{dep["url"]}/+archive/{dep["rev"]}.tar.gz";
+        hash = get_zig_hash_from_url(archive_url)
+        zon = append_zon_entry(zon, path, archive_url, hash)
+
+    zon += "},\n}"
+    
+    return zon
 
 def main():
     if len(sys.argv) != 2:
@@ -128,18 +156,17 @@ def main():
     
     v8_revision = sys.argv[1]
 
-    v8_hash = get_nix_hash_from_git("https://chromium.googlesource.com/v8/v8.git", v8_revision)
     deps_file = fetch_deps_file(v8_revision)
-    deps_data = generate_deps_data(deps_file, v8_revision, v8_hash)
+    deps_data = generate_deps_data(deps_file, v8_revision)
+    zon_data = generate_zon_file(deps_data)
 
-    with open('deps.json', "w") as f:
-        json.dump(deps_data, f, indent=2, sort_keys=True)
+    with open('build.zig.zon', "w") as f:
+        f.write(zon_data)
 
-    print(f"\nSuccess! Generated deps.json with:")
+    print(f"\nSuccess! Generated build.zig.zon with:")
     print(f"  V8 revision: {v8_revision}")
-    print(f"  V8 hash: {v8_hash}")
     print(f"  Dependencies: {len(deps_data['dependencies'])}")
-    print(f"\nCommit this deps.json file to your repository.")
+    print(f"\nCommit this file to your repository.")
 
 if __name__ == "__main__":
     main()
