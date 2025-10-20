@@ -59,14 +59,14 @@ pub fn build(b: *std.Build) !void {
         };
 
         const run_get_tools = blk: {
-            var run_get_tools = b.addSystemCommand(&.{ "/bin/bash", "get_tools.sh" });
+            var run_get_tools = b.addSystemCommand(&.{ "bash", "get_tools.sh" });
             run_get_tools.setCwd(build_path);
             run_get_tools.step.dependOn(&cp_build_files.step);
             break :blk run_get_tools;
         };
 
         const run_v8_source = blk: {
-            var run_v8_source = b.addSystemCommand(&.{ "/bin/bash", "get_v8.sh" });
+            var run_v8_source = b.addSystemCommand(&.{ "bash", "get_v8.sh" });
             run_v8_source.setCwd(build_path);
             run_v8_source.step.dependOn(&run_get_tools.step);
             break :blk run_v8_source;
@@ -93,7 +93,7 @@ pub fn build(b: *std.Build) !void {
         });
 
         const run_build = blk: {
-            var run_build = b.addSystemCommand(&.{ "/bin/bash", "build_v8.sh" });
+            var run_build = b.addSystemCommand(&.{ "bash", "build_v8.sh" });
             run_build.addDirectoryArg(b.path("src"));
             run_build.addArg(if (optimize == .Debug) "debug" else "release");
             run_build.setCwd(build_path);

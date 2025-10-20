@@ -1,0 +1,91 @@
+{
+  "dependencies": {
+    "build": {
+      "rev": "5aa72841882c9df27ba6fdfb92c4659e1c273396",
+      "sha256": "18vzb1mji8cvd3y72bghhx8y72h8mkfjsh1a8jpm1w94ad5v9c6p",
+      "url": "https://chromium.googlesource.com/chromium/src/build.git"
+    },
+    "buildtools": {
+      "rev": "40f96b0b4abe41bacb0838d723afdad715f89a8e",
+      "sha256": "0wpa6i5hsk4i42sz0gg7q8wchnkvni4q5fy8sn79iz7kpghmzmf2",
+      "url": "https://chromium.googlesource.com/chromium/src/buildtools.git"
+    },
+    "third_party/abseil-cpp": {
+      "rev": "5f6b05eac05371bee829951e64f3fd35854e9311",
+      "sha256": "10yf5rmv1d7wzh8sig85v20s66sjq6cnqk2nvwa4zhkvhq8hs2ss",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git"
+    },
+    "third_party/dragonbox/src": {
+      "rev": "6c7c925b571d54486b9ffae8d9d18a822801cbda",
+      "sha256": "1izraikzi1maqkhmrp1rvj2jfcbbhvglbbx84rjamh70qdff5s80",
+      "url": "https://chromium.googlesource.com/external/github.com/jk-jeon/dragonbox.git"
+    },
+    "third_party/fast_float/src": {
+      "rev": "cb1d42aaa1e14b09e1452cfdef373d051b8c02a4",
+      "sha256": "0d2kf8g5xdavy7kyak9ryrpg8cwwncx3vf9pk6g8qnbvbmxn6vh8",
+      "url": "https://chromium.googlesource.com/external/github.com/fastfloat/fast_float.git"
+    },
+    "third_party/fp16/src": {
+      "rev": "0a92994d729ff76a58f692d3028ca1b64b145d91",
+      "sha256": "05mm4vrxsac35hjf5djif9r6rdxj9ippg97ia3p6q6b8lrp7srwv",
+      "url": "https://chromium.googlesource.com/external/github.com/Maratyszcza/FP16.git"
+    },
+    "third_party/googletest/src": {
+      "rev": "373af2e3df71599b87a40ce0e37164523849166b",
+      "sha256": "1365fwm5g9shchgmkv3d0v5lwh3656swysia7b47zpi3d2il9fnk",
+      "url": "https://chromium.googlesource.com/external/github.com/google/googletest.git"
+    },
+    "third_party/highway/src": {
+      "rev": "00fe003dac355b979f36157f9407c7c46448958e",
+      "sha256": "1xkna5darpq5vbl9s0hynacfzz6mb3dilxhw6rag193h03bycbi1",
+      "url": "https://chromium.googlesource.com/external/github.com/google/highway.git"
+    },
+    "third_party/icu": {
+      "rev": "1b2e3e8a421efae36141a7b932b41e315b089af8",
+      "sha256": "1i0z9wslr35hxqz8x4wd92jiahy9wf5jym4pf6iqlgj373agfz4k",
+      "url": "https://chromium.googlesource.com/chromium/deps/icu.git"
+    },
+    "third_party/jinja2": {
+      "rev": "c3027d884967773057bf74b957e3fea87e5df4d7",
+      "sha256": "16i6lnp76dl6hk12vqxld1wfj6x0s8m0jx6ic0zjkxjx9w4464s6",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/jinja2.git"
+    },
+    "third_party/libc++/src": {
+      "rev": "1ce2525ae355a30a61bacd896916c3416d1827b1",
+      "sha256": "1dqbzryhhbbax49q61prgmzqmdr48wwy7kb2zipw2jn885knfkbq",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx.git"
+    },
+    "third_party/libc++abi/src": {
+      "rev": "a6c815c69d55ec59d020abde636754d120b402ad",
+      "sha256": "1gb3cwmf3p8by1yv0vz44298r9fd28cqkqhz0s17jfzm4dvvivn0",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi.git"
+    },
+    "third_party/llvm-libc/src": {
+      "rev": "866857ce9ca0e6fc6b37fbd1725c3c70c98b0837",
+      "sha256": "0jrjrfb91wmlmigzspvnyfzk06fwx35fr2142jbrb1pi043pmn4k",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libc.git"
+    },
+    "third_party/markupsafe": {
+      "rev": "4256084ae14175d38a3ff7d739dca83ae49ccec6",
+      "sha256": "1wplh2mxhv1gy4vjppklw8jv92893w85bdj4zp7hd9272vzh52wr",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/markupsafe.git"
+    },
+    "third_party/simdutf": {
+      "rev": "c6c377dbb834a65fbea1423a670d82ecc2d576d2",
+      "sha256": "11pn3vkxilnca9zahyzyyz1z0yw1bw1xcmy3xdh57dn1h3njp11d",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/simdutf"
+    },
+    "third_party/zlib": {
+      "rev": "363a126ed293970f3df97ee5f760cba29a29e193",
+      "sha256": "163w8rbrfrmivhy6wngw08mx6z5da4ckcs3xxkgkvxqxfwr7xfjl",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/zlib.git"
+    },
+    "tools/clang": {
+      "rev": "ef1872e2e1012694ffbeeed668ff2c127517b7f0",
+      "sha256": "1r379vlvxx9dz6yrrl7vqgpfn0a8h9smbvbmc6pxnr281i1ar83f",
+      "url": "https://chromium.googlesource.com/chromium/src/tools/clang.git"
+    }
+  },
+  "v8_hash": "122rx3ab7hy9rznwrqgiwnm3865f6dbldmixp8hrs0bbh5avrin7",
+  "v8_revision": "14.0.365.4"
+}

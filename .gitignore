@@ -1,3 +1,4 @@
 /.zig-cache/
 /zig-out/
 /v8/
+result
