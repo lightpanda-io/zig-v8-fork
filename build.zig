@@ -131,6 +131,18 @@ fn prepareV8Sources(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void 
         const target_path = b.fmt("v8/{s}", .{dep_name});
         try ensureDirectoryExists(target_path);
         try copyDirectory(allocator, b.fmt("{f}/", .{dep_path.getPath3(b, null)}), target_path);
+
+        if (std.mem.eql(u8, dep_name, "tools/clang")) {
+            const clang_update_result = try runCommand(
+                allocator,
+                &[_][]const u8{ "python3", "tools/clang/scripts/update.py" },
+                "v8",
+            );
+
+            if (clang_update_result.term.Exited != 0) {
+                return error.ClangUpdateFailed;
+            }
+        }
     }
 
     try copyFile(allocator, stringFilePathFromRoot(b, "src/binding.cpp"), "v8/binding.cpp");
@@ -149,31 +161,6 @@ fn prepareV8Sources(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void 
     try writeFile("v8/build/config/gclient_args.gni", gclient_args);
 }
 
-// #!/usr/bin/env bash
-// set -o errexit #  exit on errors
-// set -o nounset # exit on use of uninitialized variable
-// set -o errtrace # inherits trap on ERR in function and subshell
-
-// source utils.sh
-
-// mkdir -p tools/
-
-// if [ ! -f tools/gn ]; then
-//   GN_ARCHIVE="${OS}-${ARCH}"
-//   download "https://chrome-infra-packages.appspot.com/dl/gn/gn/${GN_ARCHIVE}/+/latest" tools/gn.zip
-//   unzip -o tools/gn.zip -d tools
-// fi
-
-// if [ ! -f tools/ninja ]; then
-//   NINJA_ARCHIVE="ninja-${OS}.zip"
-//   if [ "${OS}" = "linux" ] && [ "${ARCH}" == "arm64" ]; then
-//     NINJA_ARCHIVE="ninja-linux-aarch64.zip"
-//   fi
-
-//   download "https://github.com/ninja-build/ninja/releases/download/v1.12.1/${NINJA_ARCHIVE}" tools/ninja.zip
-//   unzip -o tools/ninja.zip  -d tools
-// fi
-
 fn createDownloadToolsStep(b: *std.Build) !*std.Build.Step {
     const step = try b.allocator.create(std.Build.Step);
     step.* = std.Build.Step.init(.{
@@ -186,41 +173,55 @@ fn createDownloadToolsStep(b: *std.Build) !*std.Build.Step {
     return step;
 }
 
+fn downloadAndUnzipTool(b: *std.Build, allocator: std.mem.Allocator, url: []const u8, name: []const u8) !void {
+    const download_result = try runCommand(
+        allocator,
+        &[_][]const u8{
+            "curl",
+            "-L",
+            url,
+            "-o",
+            b.fmt("tools/{s}.zip", .{name}),
+        },
+        null,
+    );
+
+    if (download_result.term.Exited != 0) {
+        std.log.err("Download failed: {s}", .{download_result.stderr});
+        return error.DownloadFailed;
+    }
+
+    const unzip_result = try runCommand(
+        allocator,
+        &[_][]const u8{ "unzip", "-o", b.fmt("tools/{s}.zip", .{name}), "-d", "tools" },
+        null,
+    );
+
+    if (unzip_result.term.Exited != 0) {
+        std.log.err("unzip failed: {s}", .{unzip_result.stderr});
+        return error.UnzipFailed;
+    }
+}
+
 fn downloadTools(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
     const b = step.owner;
     const allocator = b.allocator;
 
     try ensureDirectoryExists("tools");
 
-    const download_gn_result = try runCommand(
+    try downloadAndUnzipTool(
+        b,
         allocator,
-        &[_][]const u8{
-            "curl",
-            "-L",
-            "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest",
-            "-o",
-            "tools/gn.zip",
-        },
-        null,
+        "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest",
+        "gn",
     );
 
-    if (download_gn_result.term.Exited != 0) {
-        std.log.err("GN download failed: {s}", .{download_gn_result.stderr});
-        return error.GNDownloadFailed;
-    }
-
-    const unzip_gn_result = try runCommand(
+    try downloadAndUnzipTool(
+        b,
         allocator,
-        &[_][]const u8{ "unzip", "tools/gn.zip", "-d", "tools" },
-        null,
+        "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip",
+        "ninja",
     );
-
-    if (download_gn_result.term.Exited != 0) {
-        std.log.err("GN unzip failed: {s}", .{unzip_gn_result.stderr});
-        return error.GNUnzipFailed;
-    }
-
-    // TODO: Ninja Download
 }
 
 fn createBuildV8Step(b: *std.Build, prepare_step: *std.Build.Step, tools_step: *std.Build.Step) !*std.Build.Step {

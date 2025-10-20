@@ -45,10 +45,16 @@
               zigpkgs."0.15.2"
               zls
 
-              gn
-              ninja
               python3
               ty
+
+              pkg-config
+              expat.dev
+              glib.dev
+              glibc.dev
+              zlib
+              gcc_multi
+              gcc-unwrapped
             ];
         };
       in
