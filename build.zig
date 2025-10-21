@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) !void {
 
     const prepared_v8 = try prepareV8Sources(b);
     const update_clang = updateClangSources(b, prepared_v8);
-    const tools_dir = try downloadTools(b);
+    const tools_dir = try downloadTools(b, target);
     const v8_built = try buildV8(b, prepared_v8, update_clang, tools_dir, target, optimize);
 
     const prepare_step = b.step("prepare-v8", "Prepare V8 source code and dependencies");
@@ -144,14 +144,29 @@ fn updateClangSources(b: *std.Build, prepared_v8: *std.Build.Step.WriteFile) *st
     return clang_update;
 }
 
-fn downloadTools(b: *std.Build) !*std.Build.Step.WriteFile {
+fn downloadTools(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+) !*std.Build.Step.WriteFile {
     const tools_wf = b.addWriteFiles();
+
+    const arch = switch (target.result.cpu.arch) {
+        .aarch64 => "arm64",
+        .x86_64 => "amd64",
+        else => return error.UnsupportedArchitecture,
+    };
+
+    const os = switch (target.result.os.tag) {
+        .linux => "linux",
+        .macos, .ios => "mac",
+        else => return error.UnsupportedOperatingSystem,
+    };
 
     // Download GN
     const download_gn = b.addSystemCommand(&.{
         "curl",
         "-L",
-        "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest",
+        b.fmt("https://chrome-infra-packages.appspot.com/dl/gn/gn/{s}-{s}/+/latest", .{ os, arch }),
         "-o",
     });
 
@@ -163,11 +178,22 @@ fn downloadTools(b: *std.Build) !*std.Build.Step.WriteFile {
 
     _ = tools_wf.addCopyFile(gn_dir.path(b, "gn"), "gn");
 
+    const ninja_archive = blk: {
+        if (target.result.cpu.arch == .aarch64 and target.result.os.tag == .linux) {
+            break :blk "ninja-linux-aarch64.zip";
+        }
+
+        break :blk b.fmt(
+            "ninja-{s}.zip",
+            .{os},
+        );
+    };
+
     // Download Ninja
     const download_ninja = b.addSystemCommand(&.{
         "curl",
         "-L",
-        "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip",
+        b.fmt("https://github.com/ninja-build/ninja/releases/download/v1.12.1/{s}", .{ninja_archive}),
         "-o",
     });
     const ninja_zip = download_ninja.addOutputFileArg("ninja.zip");
@@ -195,6 +221,8 @@ fn buildV8(
 
     const allocator = b.allocator;
 
+    const tag = target.result.os.tag;
+    const arch = target.result.cpu.arch;
     const is_debug = optimize == .Debug;
 
     var gn_args: std.ArrayList(u8) = .empty;
@@ -202,14 +230,29 @@ fn buildV8(
 
     if (is_debug) {
         try gn_args.appendSlice(allocator, "is_debug=true\n");
+        try gn_args.appendSlice(allocator, "symbol_level=1\n");
     } else {
         try gn_args.appendSlice(allocator, "is_debug=false\n");
+        try gn_args.appendSlice(allocator, "symbol_level=0\n");
     }
 
-    try gn_args.appendSlice(allocator, "symbol_level=0\n");
+    switch (tag) {
+        .ios => {
+            try gn_args.appendSlice(allocator, "v8_enable_pointer_compression=false\n");
+            try gn_args.appendSlice(allocator, "v8_enable_webassembly=false\n");
+            // TODO: target_environment for this target.
+        },
+        .linux => {
+            if (arch == .aarch64) {
+                try gn_args.appendSlice(allocator, "clang_base_path=\"usr/lib/llvm-21\"\n");
+                try gn_args.appendSlice(allocator, "clang_use_chrome_plugins=false\n");
+                try gn_args.appendSlice(allocator, "treat_warnings_as_errors=false\n");
+            }
+        },
+        else => {},
+    }
+
     try gn_args.appendSlice(allocator, "is_official_build=false\n");
-    try gn_args.appendSlice(allocator, "clang_use_chrome_plugins=false\n");
-    try gn_args.appendSlice(allocator, "treat_warnings_as_errors=false\n");
 
     var gn_run = std.Build.Step.Run.create(b, "run gn");
     gn_run.addFileArg(tools.path(b, "gn"));
@@ -231,14 +274,6 @@ fn buildV8(
     ninja_run.addArgs(&.{ "-C", "out", "c_v8" });
     ninja_run.setCwd(v8_dir);
     ninja_run.step.dependOn(&gn_run.step);
-
-    _ = target;
-    // const release_dir = if (is_debug) "debug" else "release";
-    // const os = switch (target.result.os.tag) {
-    //     .linux => "linux",
-    //     .macos => "macos",
-    //     else => return error.UnsupportedPlatform,
-    // };
 
     const install_lib = b.addInstallLibFile(v8_dir.path(b, "out/obj/zig/libc_v8.a"), "libc_v8.a");
     install_lib.step.dependOn(&ninja_run.step);
