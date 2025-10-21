@@ -41,7 +41,6 @@
           name = "fhs-shell";
           targetPkgs =
             pkgs: with pkgs; [
-              nix-prefetch-scripts
               zigpkgs."0.15.2"
               zls
               python3
