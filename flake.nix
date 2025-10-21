@@ -44,10 +44,7 @@
               nix-prefetch-scripts
               zigpkgs."0.15.2"
               zls
-
               python3
-              ty
-
               pkg-config
               expat.dev
               glib.dev
@@ -60,7 +57,6 @@
       in
       {
         devShells.default = fhs.env;
-        packages = import ./nix/package.nix { inherit pkgs; };
       }
     );
 }
