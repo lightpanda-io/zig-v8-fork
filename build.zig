@@ -13,6 +13,21 @@ pub fn build(b: *std.Build) !void {
         b.option(bool, "inspector_subtype", "Export default valueSubtype and descriptionForValueSubtype") orelse true,
     );
 
+    const prepared_v8 = try prepareV8Sources(b);
+    const update_clang = updateClangSources(b, prepared_v8);
+    const tools_dir = try downloadTools(b, target);
+    const built_v8 = try buildV8(b, prepared_v8, update_clang, tools_dir, target, optimize);
+
+    const prepare_step = b.step("prepare-v8", "Prepare V8 source code and dependencies");
+    prepare_step.dependOn(&prepared_v8.step);
+    prepare_step.dependOn(&update_clang.step);
+
+    const tools_step = b.step("download-tools-v8", "Download V8 Build Tools");
+    tools_step.dependOn(&tools_dir.step);
+
+    const build_step = b.step("build-v8", "Build v8");
+    build_step.dependOn(&built_v8.step);
+
     // the module we export as a library
     const v8_module = b.addModule("v8", .{
         .root_source_file = b.path("src/v8.zig"),
@@ -23,21 +38,15 @@ pub fn build(b: *std.Build) !void {
     });
     v8_module.addIncludePath(b.path("src"));
     v8_module.addImport("default_exports", build_opts.createModule());
+    v8_module.addObjectFile(built_v8.getDirectory().path(b, "libc_v8.a"));
 
-    const prepared_v8 = try prepareV8Sources(b);
-    const update_clang = updateClangSources(b, prepared_v8);
-    const tools_dir = try downloadTools(b, target);
-    const v8_built = try buildV8(b, prepared_v8, update_clang, tools_dir, target, optimize);
-
-    const prepare_step = b.step("prepare-v8", "Prepare V8 source code and dependencies");
-    prepare_step.dependOn(&prepared_v8.step);
-    prepare_step.dependOn(&update_clang.step);
-
-    const tools_step = b.step("download-tools-v8", "Download V8 Build Tools");
-    tools_step.dependOn(&tools_dir.step);
-
-    const build_step = b.step("build-v8", "Build v8");
-    build_step.dependOn(&v8_built.step);
+    switch (target.result.os.tag) {
+        .macos => {
+            v8_module.addSystemFrameworkPath(.{ .cwd_relative = "/System/Library/Frameworks" });
+            v8_module.linkFramework("CoreFoundation", .{});
+        },
+        else => {},
+    }
 
     {
         const test_module = b.createModule(.{
@@ -215,7 +224,7 @@ fn buildV8(
     tools_dir: *std.Build.Step.WriteFile,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-) !*std.Build.Step.Run {
+) !*std.Build.Step.WriteFile {
     const v8_dir = v8_prepared.getDirectory();
     const tools = tools_dir.getDirectory();
 
@@ -275,9 +284,9 @@ fn buildV8(
     ninja_run.setCwd(v8_dir);
     ninja_run.step.dependOn(&gn_run.step);
 
-    const install_lib = b.addInstallLibFile(v8_dir.path(b, "out/obj/zig/libc_v8.a"), "libc_v8.a");
-    install_lib.step.dependOn(&ninja_run.step);
-    b.getInstallStep().dependOn(&install_lib.step);
+    const wf = b.addWriteFiles();
+    wf.step.dependOn(&ninja_run.step);
+    _ = wf.addCopyFile(v8_dir.path(b, "out/obj/zig/libc_v8.a"), "libc_v8.a");
 
-    return ninja_run;
+    return wf;
 }
