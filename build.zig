@@ -13,10 +13,21 @@ pub fn build(b: *std.Build) !void {
         b.option(bool, "inspector_subtype", "Export default valueSubtype and descriptionForValueSubtype") orelse true,
     );
 
+    const prebuilt_v8_path = b.option([]const u8, "prebuilt_v8_path", "Path to prebuilt libc_v8.a");
+
     const prepared_v8 = try prepareV8Sources(b);
     const update_clang = updateClangSources(b, prepared_v8);
     const tools_dir = try downloadTools(b, target);
-    const built_v8 = try buildV8(b, prepared_v8, update_clang, tools_dir, target, optimize);
+
+    const built_v8 = if (prebuilt_v8_path) |path| blk: {
+        // Use prebuilt_v8 if available.
+        const wf = b.addWriteFiles();
+        _ = wf.addCopyFile(b.path(path), "libc_v8.a");
+        break :blk wf;
+    } else blk: {
+        // Otherwise, go through build process.
+        break :blk try buildV8(b, prepared_v8, update_clang, tools_dir, target, optimize);
+    };
 
     const prepare_step = b.step("prepare-v8", "Prepare V8 source code and dependencies");
     prepare_step.dependOn(&prepared_v8.step);
