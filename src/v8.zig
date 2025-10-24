@@ -3026,6 +3026,14 @@ pub const InspectorSession = struct {
         c.v8_inspector__Session__DELETE(self.handle);
     }
 
+    pub fn stop(self: InspectorSession) void {
+        c.v8_inspector__Session__stop(self.handle);
+    }
+
+    pub fn _resume(self: InspectorSession) void {
+        c.v8_inspector__Session__resume(self.handle);
+    }
+
     pub fn dispatchProtocolMessage(
         self: InspectorSession,
         isolate: Isolate,
