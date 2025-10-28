@@ -3203,3 +3203,31 @@ pub export fn zigAlloc(self: *anyopaque, bytes: usize) callconv(.c) ?[*]u8 {
     const allocated_bytes = allocator.alloc(u8, bytes) catch return null;
     return allocated_bytes.ptr;
 }
+
+pub const StartupData = c.StartupData;
+
+pub const SnapshotCreator = struct {
+    handle: *c.SnapshotCreator = undefined,
+
+    pub fn init(self: *SnapshotCreator, params: *const c.CreateParams) void {
+        self.handle = c.v8__SnapshotCreator__CREATE(params).?;
+    }
+
+    pub fn getIsolate(self: *SnapshotCreator) Isolate {
+        return .{
+            .handle = c.v8__SnapshotCreator__getIsolate(self.handle).?,
+        };
+    }
+
+    pub fn createSnapshotDataBlob(self: *SnapshotCreator, source: []const u8) StartupData {
+        return c.v8__internal__SnapshotCreator__CreateSnapshotDataBlobInternal(
+            self.handle,
+            source.ptr,
+            @intCast(source.len),
+        );
+    }
+
+    pub fn deinit(self: *SnapshotCreator) void {
+        c.v8__SnapshotCreator__DESTRUCT(self.handle);
+    }
+};

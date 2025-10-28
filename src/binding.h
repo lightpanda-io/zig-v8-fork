@@ -1002,9 +1002,9 @@ typedef struct ScriptCompilerSource {
 
     CompileHintCallback compile_hint_callback;
     void* compile_hint_callback_data;
-    CompilationDetails compilation_details
-
+    CompilationDetails compilation_details;
 } ScriptCompilerSource;
+
 typedef enum BufferPolicy {
     BufferNotOwned,
     BufferOwned
@@ -1263,3 +1263,15 @@ void v8_inspector__RemoteObject__setPreview(RemoteObject* self, ObjectPreview* p
 bool v8_inspector__RemoteObject__hasCustomPreview(RemoteObject* self);
 const CustomPreview* v8_inspector__RemoteObject__getCustomPreview(RemoteObject* self);
 void v8_inspector__RemoteObject__setCustomPreview(RemoteObject* self, CustomPreview* customPreview);
+
+// SnapshotCreator
+typedef struct SnapshotCreator SnapshotCreator;
+
+SnapshotCreator* v8__SnapshotCreator__CREATE(const CreateParams* params);
+Isolate* v8__SnapshotCreator__getIsolate(SnapshotCreator* self);
+StartupData v8__internal__SnapshotCreator__CreateSnapshotDataBlobInternal(
+  SnapshotCreator* self,
+  const char* source,
+  int source_len
+);
+void v8__SnapshotCreator__DESTRUCT(SnapshotCreator* self);

@@ -9,6 +9,7 @@
 #include "src/inspector/protocol/Runtime.h"
 #include "src/inspector/v8-string-conversions.h"
 #include "src/debug/debug-interface.h"
+#include "src/snapshot/snapshot.h"
 
 #include "inspector.h"
 
@@ -2244,6 +2245,31 @@ void v8_inspector__Client__consoleAPIMessage(
     unsigned columnNumber, v8_inspector::V8StackTrace* stackTrace) {
   self->consoleAPIMessage(contextGroupId, level, message, url, lineNumber,
                           columnNumber, stackTrace);
+}
+
+} // extern "C"
+
+// SnapshotCreator
+extern "C" {
+
+v8::SnapshotCreator* v8__SnapshotCreator__CREATE(const v8::Isolate::CreateParams& params) {
+    return new v8::SnapshotCreator(params);
+}
+
+v8::Isolate* v8__SnapshotCreator__getIsolate(v8::SnapshotCreator* self) {
+    return self->GetIsolate();
+}
+
+v8::StartupData v8__internal__SnapshotCreator__CreateSnapshotDataBlobInternal(
+    v8::SnapshotCreator *self, const char *source, int source_len) {
+  std::string source_string(source, source_len);
+  return v8::internal::CreateSnapshotDataBlobInternal(
+      v8::SnapshotCreator::FunctionCodeHandling::kClear, source_string.data(),
+      *self);
+}
+
+void v8__SnapshotCreator__DESTRUCT(v8::SnapshotCreator* self) {
+  delete self;
 }
 
 } // extern "C"
