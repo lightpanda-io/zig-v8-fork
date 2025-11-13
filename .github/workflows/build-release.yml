@@ -176,6 +176,7 @@ jobs:
       OS: android
       ARCH: arm64
       HOST_ARCH: x64
+      TARGET_OS: android
 
     runs-on: ubuntu-22.04
     steps:
