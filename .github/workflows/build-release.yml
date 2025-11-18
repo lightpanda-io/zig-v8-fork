@@ -19,6 +19,7 @@ jobs:
     env:
       OS: linux
       ARCH: x86_64
+      TARGET_OS: linux
 
     runs-on: ubuntu-22.04
     steps:
@@ -49,6 +50,7 @@ jobs:
     env:
       OS: macos
       ARCH: aarch64
+      TARGET_OS: macos
 
     runs-on: macos-latest
     steps:
@@ -79,6 +81,7 @@ jobs:
     env:
       OS: linux
       ARCH: aarch64
+      TARGET_OS: linux
 
     runs-on: ubuntu-22.04-arm
     steps:
@@ -114,6 +117,7 @@ jobs:
     env:
       OS: macos
       ARCH: x86_64
+      TARGET_OS: macos
 
     runs-on: macos-15-large
     steps:
@@ -145,6 +149,7 @@ jobs:
       OS: ios
       ARCH: aarch64
       TARGET_ENVIRONMENT: simulator
+      TARGET_OS: ios
 
     runs-on: macos-latest
     steps:
@@ -170,3 +175,35 @@ jobs:
         with:
           allowUpdates: true
           artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.TARGET_ENVIRONMENT }}_${{ env.ARCH }}.a
+
+  build-arm64-android:
+    env:
+      OS: android
+      ARCH: arm64
+      HOST_ARCH: x64
+      TARGET_OS: android
+
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - run: OS=linux zig build get-v8 # We force the OS to linux here b/c android is not supported by get-v8
+      - run: zig build -Doptimize=ReleaseSafe build-v8
+      - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+
+      - name: Upload the build
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
