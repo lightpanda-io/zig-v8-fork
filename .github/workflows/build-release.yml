@@ -35,7 +35,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -yq libglib2.0-dev
 
-      - run: zig build get-v8
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
@@ -65,7 +64,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - run: zig build get-v8
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
@@ -100,7 +98,6 @@ jobs:
           sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64.a /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins.a && \
           sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/ /usr/lib/llvm-21/lib/clang/21/lib/aarch64-unknown-linux-gnu
 
-      - run: zig build get-v8
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
@@ -130,7 +127,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - run: zig build get-v8
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
@@ -161,7 +157,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - run: OS=macos zig build get-v8 # We force the OS to macos here b/c ios is not supported by get-v8
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv v8/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.TARGET_ENVIRONMENT }}_${{ env.ARCH }}.a
 
