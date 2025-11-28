@@ -6,6 +6,8 @@ on:
       - "**"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: write
@@ -46,127 +48,127 @@ jobs:
           allowUpdates: true
           artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-  build-aarch64-macos:
-    env:
-      OS: macos
-      ARCH: aarch64
+  # build-aarch64-macos:
+  #   env:
+  #     OS: macos
+  #     ARCH: aarch64
 
-    runs-on: macos-latest
-    steps:
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VERSION }}
-          cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: mlugg/setup-zig@v2
+  #       with:
+  #         version: ${{ env.ZIG_VERSION }}
+  #         cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.11'
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #         fetch-depth: 0
 
-      - run: zig build -Doptimize=ReleaseSafe build-v8
-      - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - run: zig build -Doptimize=ReleaseSafe build-v8
+  #     - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - name: Upload the build
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         allowUpdates: true
+  #         artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-  build-arm64-linux:
-    env:
-      OS: linux
-      ARCH: aarch64
+  # build-arm64-linux:
+  #   env:
+  #     OS: linux
+  #     ARCH: aarch64
 
-    runs-on: ubuntu-22.04-arm
-    steps:
-      - uses: mlugg/setup-zig@v2
-        with:
-          cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
-          version: ${{ env.ZIG_VERSION }}
+  #   runs-on: ubuntu-22.04-arm
+  #   steps:
+  #     - uses: mlugg/setup-zig@v2
+  #       with:
+  #         cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
+  #         version: ${{ env.ZIG_VERSION }}
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #         fetch-depth: 0
 
-      - run: |
-          sudo apt-get update
-          sudo apt-get install -yq libglib2.0-dev lld
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 21
-          sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64.a /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins.a && \
-          sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/ /usr/lib/llvm-21/lib/clang/21/lib/aarch64-unknown-linux-gnu
+  #     - run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -yq libglib2.0-dev lld
+  #         wget https://apt.llvm.org/llvm.sh
+  #         chmod +x llvm.sh
+  #         sudo ./llvm.sh 21
+  #         sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64.a /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins.a && \
+  #         sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/ /usr/lib/llvm-21/lib/clang/21/lib/aarch64-unknown-linux-gnu
 
-      - run: zig build -Doptimize=ReleaseSafe build-v8
-      - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - run: zig build -Doptimize=ReleaseSafe build-v8
+  #     - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - name: Upload the build
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         allowUpdates: true
+  #         artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-  build-x86_64-macos:
-    env:
-      OS: macos
-      ARCH: x86_64
+  # build-x86_64-macos:
+  #   env:
+  #     OS: macos
+  #     ARCH: x86_64
 
-    runs-on: macos-15-large
-    steps:
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VERSION }}
-          cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
+  #   runs-on: macos-15-large
+  #   steps:
+  #     - uses: mlugg/setup-zig@v2
+  #       with:
+  #         version: ${{ env.ZIG_VERSION }}
+  #         cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.11'
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #         fetch-depth: 0
 
-      - run: zig build -Doptimize=ReleaseSafe build-v8
-      - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - run: zig build -Doptimize=ReleaseSafe build-v8
+  #     - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - name: Upload the build
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         allowUpdates: true
+  #         artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-  build-aarch64-ios:
-    env:
-      OS: ios
-      ARCH: aarch64
-      TARGET_ENVIRONMENT: simulator
+  # build-aarch64-ios:
+  #   env:
+  #     OS: ios
+  #     ARCH: aarch64
+  #     TARGET_ENVIRONMENT: simulator
 
-    runs-on: macos-latest
-    steps:
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VERSION }}
-          cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: mlugg/setup-zig@v2
+  #       with:
+  #         version: ${{ env.ZIG_VERSION }}
+  #         cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.11'
 
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #         fetch-depth: 0
 
-      - run: zig build -Doptimize=ReleaseSafe build-v8
-      - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
+  #     - run: zig build -Doptimize=ReleaseSafe build-v8
+  #     - run: mv ${{ env.ZIG_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
-      - name: Upload the build
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.TARGET_ENVIRONMENT }}_${{ env.ARCH }}.a
+  #     - name: Upload the build
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         allowUpdates: true
+  #         artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.TARGET_ENVIRONMENT }}_${{ env.ARCH }}.a
