@@ -251,8 +251,11 @@ fn bootstrapV8(b: *std.Build, v8_dir: []const u8) !*std.Build.Step.Run {
     gclient_sync.addArgs(&.{"sync"});
     gclient_sync.setCwd(.{ .cwd_relative = v8_dir });
 
-    const depot_tools_abs_path = depot_tools.path("").getPath(b);
-    gclient_sync.setEnvironmentVariable("DEPOT_TOOLS_DIR", depot_tools_abs_path);
+    // Add depot_tools to PATH
+    const depot_tools_abs_path = b.pathFromRoot(depot_tools.path("").getPath(b));
+    const current_path = std.posix.getenv("PATH") orelse "";
+    const new_path = b.fmt("{s}:{s}", .{ depot_tools_abs_path, current_path });
+    gclient_sync.setEnvironmentVariable("PATH", new_path);
 
     gclient_sync.step.dependOn(&write_gclient_args.step);
 
