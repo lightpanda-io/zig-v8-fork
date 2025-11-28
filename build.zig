@@ -250,6 +250,10 @@ fn bootstrapV8(b: *std.Build, v8_dir: []const u8) !*std.Build.Step.Run {
     gclient_sync.addFileArg(depot_tools.path("gclient"));
     gclient_sync.addArgs(&.{"sync"});
     gclient_sync.setCwd(.{ .cwd_relative = v8_dir });
+
+    const depot_tools_abs_path = depot_tools.path("").getPath(b);
+    gclient_sync.setEnvironmentVariable("DEPOT_TOOLS_DIR", depot_tools_abs_path);
+
     gclient_sync.step.dependOn(&write_gclient_args.step);
 
     // Run clang update
