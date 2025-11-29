@@ -37,6 +37,9 @@ jobs:
           fetch-depth: 0
 
       - run: |
+          zig env
+
+      - run: |
           sudo apt-get update
           sudo apt-get install -yq libglib2.0-dev
 
