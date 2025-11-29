@@ -15,7 +15,7 @@ permissions:
 env:
   ZIG_VERSION: 0.15.1
   V8_REVISION: 14.0.365.4
-  ZIG_LOCAL_CACHE_DIR: ".zig-cache"
+  ZIG_LOCAL_CACHE_DIR: "~/.cache/zig"
 
 jobs:
   build-x86_64-linux:
@@ -25,7 +25,7 @@ jobs:
 
     runs-on: ubuntu-22.04
     steps:
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@v2.0.5
         with:
           version: ${{ env.ZIG_VERSION }}
           cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
