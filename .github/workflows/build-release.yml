@@ -15,8 +15,7 @@ permissions:
 env:
   ZIG_VERSION: 0.15.1
   V8_REVISION: 14.0.365.4
-  ZIG_LOCAL_CACHE_DIR: "~/.cache/zig"
-  ZIG_GLOBAL_CACHE_DIR: "~/.cache/zig"
+  ZIG_LOCAL_CACHE_DIR: ".zig-cache"
 
 jobs:
   build-x86_64-linux:
@@ -37,11 +36,10 @@ jobs:
           fetch-depth: 0
 
       - run: |
-          zig env
-
-      - run: |
           sudo apt-get update
           sudo apt-get install -yq libglib2.0-dev
+
+      - run: zig env
 
       - run: zig build -Doptimize=ReleaseSafe build-v8
       - run: mv ${{ env.ZIG_LOCAL_CACHE_DIR }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
