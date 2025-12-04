@@ -1403,6 +1403,12 @@ pub const Symbol = struct {
             .handle = c.v8__Symbol__GetUnscopables(isolate.handle).?,
         };
     }
+
+    pub fn getDescription(self: Symbol, isolate: Isolate) Value {
+        return .{
+            .handle = c.v8__Symbol__Description(self.handle, isolate.handle).?,
+        };
+    }
 };
 
 pub const Number = struct {

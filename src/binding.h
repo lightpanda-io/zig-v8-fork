@@ -828,6 +828,7 @@ const Symbol* v8__Symbol__GetSplit(Isolate* isolate);
 const Symbol* v8__Symbol__GetToPrimitive(Isolate* isolate);
 const Symbol* v8__Symbol__GetToStringTag(Isolate* isolate);
 const Symbol* v8__Symbol__GetUnscopables(Isolate* isolate);
+const Value* v8__Symbol__Description(const Symbol* self, Isolate* isolate);
 
 // Persistent
 typedef struct Persistent {

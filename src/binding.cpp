@@ -1514,6 +1514,9 @@ const v8::Symbol* v8__Symbol__GetToStringTag(v8::Isolate* isolate) {
 const v8::Symbol* v8__Symbol__GetUnscopables(v8::Isolate* isolate) {
     return local_to_ptr(v8::Symbol::GetUnscopables(isolate));
 }
+const v8::Value* v8__Symbol__Description(const v8::Symbol& self, v8::Isolate* isolate) {
+    return local_to_ptr(self.Description(isolate));
+}
 
 // Persistent
 
