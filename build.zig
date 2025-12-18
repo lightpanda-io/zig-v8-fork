@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) !void {
 
     const cache_root = b.option([]const u8, "cache_root", "Root directory for the V8 and depot_tools cache") orelse b.pathFromRoot(".lp-cache");
     std.fs.cwd().access(cache_root, .{}) catch {
-        try std.fs.cwd().makeDir(cache_root);
+        try std.fs.cwd().makePath(cache_root);
     };
 
     const prebuilt_v8_path = b.option([]const u8, "prebuilt_v8_path", "Path to prebuilt libc_v8.a");
