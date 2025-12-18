@@ -23,15 +23,19 @@ pub fn build(b: *std.Build) !void {
         b.option(bool, "inspector_subtype", "Export default valueSubtype and descriptionForValueSubtype") orelse true,
     );
 
-    const cache_root = b.option([]const u8, "cache_root", "Root directory for the V8 and depot_tools cache") orelse b.pathFromRoot(".lp-cache");
-    std.fs.cwd().access(cache_root, .{}) catch {
-        try std.fs.cwd().makePath(cache_root);
+    const v8_cache_root = b.option(
+        []const u8,
+        "v8_cache_root",
+        "Root directory for the V8 and depot_tools cache, must be an absolute path.",
+    ) orelse b.pathFromRoot(".v8-cache");
+    std.fs.cwd().access(v8_cache_root, .{}) catch {
+        try std.fs.cwd().makePath(v8_cache_root);
     };
 
     const prebuilt_v8_path = b.option([]const u8, "prebuilt_v8_path", "Path to prebuilt libc_v8.a");
 
-    const v8_dir = b.fmt("{s}/v8-{s}", .{ cache_root, V8_VERSION });
-    const depot_tools_dir = b.fmt("{s}/depot_tools-{s}", .{ cache_root, V8_VERSION });
+    const v8_dir = b.fmt("{s}/v8-{s}", .{ v8_cache_root, V8_VERSION });
+    const depot_tools_dir = b.fmt("{s}/depot_tools-{s}", .{ v8_cache_root, V8_VERSION });
 
     const built_v8 = if (prebuilt_v8_path) |path| blk: {
         // Use prebuilt_v8 if available.
