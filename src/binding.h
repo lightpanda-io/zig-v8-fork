@@ -861,6 +861,24 @@ void v8__Persistent__SetWeakFinalizer(
     WeakCallback finalizer_cb,
     WeakCallbackType type);
 
+// Global
+typedef struct Global {
+    uintptr_t data_ptr;
+} Global;
+void v8__Global__New(
+    Isolate* isolate,
+    const Data* data,
+    Global* out);
+void v8__Global__Reset(
+    Global* self);
+void v8__Global__SetWeak(
+    Global* self);
+void v8__Global__SetWeakFinalizer(
+    Global* self,
+    void* finalizer_ctx,
+    WeakCallback finalizer_cb,
+    WeakCallbackType type);
+
 // WeakCallbackInfo
 Isolate* v8__WeakCallbackInfo__GetIsolate(const WeakCallbackInfo* self);
 void* v8__WeakCallbackInfo__GetParameter(const WeakCallbackInfo* self);

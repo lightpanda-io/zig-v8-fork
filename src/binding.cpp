@@ -1570,6 +1570,31 @@ void v8__Persistent__SetWeakFinalizer(
     self->SetWeak(finalizer_ctx, finalizer_cb, type);
 }
 
+// Global
+
+void v8__Global__New(
+        v8::Isolate* isolate,
+        const v8::Data& data,
+        v8::Global<v8::Data>* out) {
+    new (out) v8::Global<v8::Data>(isolate, ptr_to_local(&data));
+}
+
+void v8__Global__Reset(v8::Global<v8::Data>* self) {
+    self->Reset();
+}
+
+void v8__Global__SetWeak(v8::Global<v8::Data>* self) {
+    self->SetWeak();
+}
+
+void v8__Global__SetWeakFinalizer(
+        v8::Global<v8::Data>* self,
+        void* finalizer_ctx,
+        v8::WeakCallbackInfo<void>::Callback finalizer_cb,
+        v8::WeakCallbackType type) {
+    self->SetWeak(finalizer_ctx, finalizer_cb, type);
+}
+
 // WeakCallbackInfo
 
 v8::Isolate* v8__WeakCallbackInfo__GetIsolate(
