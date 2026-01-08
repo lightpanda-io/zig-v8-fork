@@ -140,6 +140,9 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
         getDepotToolExePath(b, depot_tools_dir, "ensure_bootstrap"),
     });
     ensure_bootstrap.setCwd(.{ .cwd_relative = depot_tools_dir });
+    // Force capture stdout b/c the command write in stdout and we don't want that.
+    // TODO find a way to redirect lively stdout to stderr for the step.
+    _ = ensure_bootstrap.captureStdOut();
     addDepotToolsToPath(ensure_bootstrap, depot_tools_dir);
     ensure_bootstrap.step.dependOn(&copy_depot_tools.step);
 
@@ -303,6 +306,9 @@ fn bootstrapV8(
         "sync",
     });
     gclient_sync.setCwd(.{ .cwd_relative = v8_dir });
+    // Force capture stdout b/c the command write in stdout and we don't want that.
+    // TODO find a way to redirect lively stdout to stderr for the step.
+    _ = gclient_sync.captureStdOut();
     addDepotToolsToPath(gclient_sync, depot_tools_dir);
     gclient_sync.step.dependOn(&write_gclient_args.step);
 
@@ -312,6 +318,9 @@ fn bootstrapV8(
         "tools/clang/scripts/update.py",
     });
     clang_update.setCwd(.{ .cwd_relative = v8_dir });
+    // Force capture stdout b/c the command write in stdout and we don't want that.
+    // TODO find a way to redirect lively stdout to stderr for the step.
+    _ = clang_update.captureStdOut();
     addDepotToolsToPath(clang_update, depot_tools_dir);
     clang_update.step.dependOn(&gclient_sync.step);
 
@@ -380,6 +389,9 @@ fn buildV8(
         b.fmt("--args={s}", .{gn_args.items}),
     });
     gn_run.setCwd(v8_dir_lazy_path);
+    // Force capture stdout b/c the command write in stdout and we don't want that.
+    // TODO find a way to redirect lively stdout to stderr for the step.
+    _ = gn_run.captureStdOut();
     addDepotToolsToPath(gn_run, depot_tools_dir);
     gn_run.step.dependOn(&bootstrapped_v8.step);
 
@@ -390,6 +402,9 @@ fn buildV8(
         "c_v8",
     });
     ninja_run.setCwd(v8_dir_lazy_path);
+    // We don't force capture stdout here. Indeed, this step is run for the
+    // long v8 building step and we want to display that in the output.
+    // TODO find a way to redirect lively stdout to stderr for the step.
     addDepotToolsToPath(ninja_run, depot_tools_dir);
     ninja_run.step.dependOn(&gn_run.step);
 
