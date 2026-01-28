@@ -28,6 +28,8 @@ pub fn build(b: *std.Build) !void {
         try std.fs.cwd().makeDir(cache_root);
     };
 
+    const pages_64k = b.option(bool, "pages_64k", "Enable Linux ARM 64K pages compatibility, only for Linux ARM") orelse false;
+
     const prebuilt_v8_path = b.option([]const u8, "prebuilt_v8_path", "Path to prebuilt libc_v8.a");
 
     const v8_dir = b.fmt("{s}/v8-{s}", .{ cache_root, V8_VERSION });
@@ -46,7 +48,9 @@ pub fn build(b: *std.Build) !void {
         prepare_step.dependOn(&bootstrapped_v8.step);
 
         // Otherwise, go through build process.
-        break :blk try buildV8(b, v8_dir, depot_tools_dir, bootstrapped_v8, target, optimize);
+        break :blk try buildV8(b, v8_dir, depot_tools_dir, bootstrapped_v8, target, optimize, .{
+            .pages_64k = pages_64k,
+        });
     };
 
     const build_step = b.step("build-v8", "Build v8");
@@ -322,6 +326,11 @@ fn bootstrapV8(
     return create_marker;
 }
 
+const Config = struct {
+    // Enable build compatible with 64k page linux.
+    pages_64k: bool,
+};
+
 fn buildV8(
     b: *std.Build,
     v8_dir: []const u8,
@@ -329,6 +338,7 @@ fn buildV8(
     bootstrapped_v8: *std.Build.Step.Run,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    config: Config,
 ) !*std.Build.Step.WriteFile {
     const v8_dir_lazy_path: LazyPath = .{ .cwd_relative = v8_dir };
 
@@ -366,6 +376,12 @@ fn buildV8(
             }
         },
         else => {},
+    }
+
+    if (config.pages_64k) {
+        // Works only with linux aarch64 build.
+        std.debug.assert(tag == .linux and arch == .aarch64);
+        try gn_args.appendSlice(allocator, "v8_enable_pointer_compression=false\n");
     }
 
     const out_dir = b.fmt("out/{s}/{s}", .{ @tagName(tag), if (is_debug) "debug" else "release" });

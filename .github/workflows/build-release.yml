@@ -113,6 +113,41 @@ jobs:
           allowUpdates: true
           artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}.a
 
+  build-arm64-linux-page64k:
+    env:
+      OS: linux
+      ARCH: aarch64
+
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: mlugg/setup-zig@v2
+        with:
+          cache-key: ${{ env.ZIG_VERSION }}-${{ env.OS }}-${{ env.ARCH }}
+          version: ${{ env.ZIG_VERSION }}
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -yq libglib2.0-dev lld
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64.a /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.builtins.a && \
+          sudo ln -nsf /usr/lib/llvm-21/lib/clang/21/lib/linux/ /usr/lib/llvm-21/lib/clang/21/lib/aarch64-unknown-linux-gnu
+
+      - run: zig build -Doptimize=ReleaseSafe -Dpages_64k=true build-v8
+      - run: mv ${{ env.LP_CACHE }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/release/obj/zig/libc_v8.a libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}_pages64k.a
+
+      - name: Upload the build
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_${{ env.ARCH }}_pages64k.a
+
   build-x86_64-macos:
     env:
       OS: macos
