@@ -6,6 +6,8 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: write
@@ -30,25 +32,4 @@ jobs:
     with:
       runner: ubuntu-22.04-arm
       target: aarch64-linux
-      build_type: release
-
-  build-aarch64-macos:
-    uses: ./.github/workflows/_prebuild-v8.yml
-    with:
-      runner: macos-26
-      target: aarch64-macos
-      build_type: release
-
-  build-x86_64-macos:
-    uses: ./.github/workflows/_prebuild-v8.yml
-    with:
-      runner: macos-26-intel
-      target: x86_64-macos
-      build_type: release
-
-  build-aarch64-ios:
-    uses: ./.github/workflows/_prebuild-v8.yml
-    with:
-      runner: macos-26
-      target: aarch64-ios-simulator
       build_type: release

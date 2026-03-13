@@ -84,8 +84,8 @@ jobs:
           mv "${{ inputs.lp_cache }}/v8-${{ env.V8_REVISION }}/out/${{ env.OS }}/${{ inputs.build_type }}/obj/zig/libc_v8.a" "libc_v8_${{ env.V8_REVISION }}_${{ env.OS }}_$DST.a"
 
       - name: Upload the build
-        if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           artifacts: libc_v8_*.a
+          tag: v0.3.3
