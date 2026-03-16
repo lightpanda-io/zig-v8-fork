@@ -30,6 +30,9 @@ const GnArgs = struct {
     symbol_level: u8,
     v8_enable_sandbox: bool,
 
+    cc_wrapper: ?[]const u8,
+    git_cache_dir: ?[]const u8,
+
     fn asString(self: GnArgs, b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
         const tag = target.result.os.tag;
         const arch = target.result.cpu.arch;
@@ -39,6 +42,7 @@ const GnArgs = struct {
 
         // Use modern siso instead of outdated ninja to speed up the build.
         try args.appendSlice(gpa, "use_siso=true\n");
+        try args.appendSlice(gpa, "use_remoteexec=false\n");
 
         // official builds depend on pgo
         try args.appendSlice(gpa, "is_official_build=false\n");
@@ -63,6 +67,10 @@ const GnArgs = struct {
             else => {},
         }
 
+        if (self.cc_wrapper) |wrapper| {
+            try args.appendSlice(gpa, b.fmt("cc_wrapper=\"{s}\"\n", .{wrapper}));
+        }
+
         return gpa.dupe(u8, args.items);
     }
 };
@@ -76,6 +84,8 @@ pub fn build(b: *std.Build) !void {
         .symbol_level = b.option(u8, "symbol_level", "Symbol level") orelse if (optimize == .Debug) 1 else 0,
         .is_asan = b.option(bool, "is_asan", "Address sanitizer") orelse false,
         .is_tsan = b.option(bool, "is_tsan", "Thread sanitizer") orelse false,
+        .cc_wrapper = b.option([]const u8, "cc_wrapper", "C/C++ compiler wrapper (like ccache or sccache)"),
+        .git_cache_dir = b.option([]const u8, "git_cache_dir", "Cache for 'gclient sync' operations"),
         .v8_enable_sandbox = b.option(bool, "v8_enable_sandbox", "V8 lightable sandbox") orelse false,
     };
 
@@ -104,7 +114,13 @@ pub fn build(b: *std.Build) !void {
         };
     } else blk: {
         const bootstrapped_depot_tools = try bootstrapDepotTools(b, depot_tools_dir);
-        const bootstrapped_v8 = try bootstrapV8(b, bootstrapped_depot_tools, v8_dir, depot_tools_dir);
+        const bootstrapped_v8 = try bootstrapV8(
+            b,
+            bootstrapped_depot_tools,
+            v8_dir,
+            depot_tools_dir,
+            gn_args.git_cache_dir,
+        );
 
         const prepare_step = b.step("prepare-v8", "Prepare V8 source code");
         prepare_step.dependOn(bootstrapped_v8.step);
@@ -235,6 +251,7 @@ fn bootstrapV8(
     bootstrapped_depot_tools: *std.Build.Step,
     v8_dir: []const u8,
     depot_tools_dir: []const u8,
+    git_cache_dir: ?[]const u8,
 ) !V8BootstrapResult {
     const marker_file = b.fmt("{s}/.bootstrap-complete", .{v8_dir});
 
@@ -320,7 +337,7 @@ fn bootstrapV8(
     mkdir.step.dependOn(bootstrapped_depot_tools);
 
     // Write .gclient file
-    const gclient_content = b.fmt(
+    var gclient_content = b.fmt(
         \\solutions = [
         \\  {{
         \\    "name": ".",
@@ -330,8 +347,15 @@ fn bootstrapV8(
         \\    "custom_deps": {{}},
         \\  }},
         \\]
-        \\
     , .{V8_VERSION});
+
+    if (git_cache_dir) |cache_dir| {
+        gclient_content = b.fmt(
+            \\{s}
+            \\
+            \\cache_dir = "{s}"
+        , .{ gclient_content, cache_dir });
+    }
 
     const write_gclient = b.addSystemCommand(&.{ "sh", "-c" });
     write_gclient.addArg(b.fmt("echo '{s}' > {s}/.gclient", .{ gclient_content, v8_dir }));
