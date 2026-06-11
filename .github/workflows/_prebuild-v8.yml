@@ -12,6 +12,10 @@ on:
       lp_cache:
         type: string
         default: '.lp-cache'
+      extra_build_args:
+        description: 'Extra zig build flags, e.g. -Dv8_enable_webassembly=false'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -72,9 +76,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.build_type }}" = "debug" ]; then
-            zig build -Dtarget="${{ inputs.target }}" -Doptimize=Debug -Dis_tsan=true -Dv8_enable_sandbox=true build-v8
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=Debug -Dis_tsan=true -Dv8_enable_sandbox=true ${{ inputs.extra_build_args }} build-v8
           else
-            zig build -Dtarget="${{ inputs.target }}" -Doptimize=ReleaseSafe build-v8
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=ReleaseSafe ${{ inputs.extra_build_args }} build-v8
           fi
 
       - name: Find v8 library
@@ -96,3 +100,6 @@ jobs:
         with:
           allowUpdates: true
           artifacts: libc_v8_*.a
+          # Semver convention: hyphenated tags (v0.4.8-slim.0) are prereleases,
+          # so experimental builds never become the "latest" release.
+          prerelease: ${{ contains(github.ref_name, '-') }}

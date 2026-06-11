@@ -30,6 +30,16 @@ const GnArgs = struct {
     symbol_level: u8,
     v8_enable_sandbox: bool,
 
+    // Tri-state feature flags: null means "not set", which leaves the value
+    // to V8's own GN defaulting cascade (e.g. lite_mode implies jitless,
+    // which implies no sparkplug/maglev/turbofan/wasm). Only explicitly set
+    // flags are emitted, so invalid combinations are caught by V8's asserts.
+    v8_enable_webassembly: ?bool,
+    v8_enable_maglev: ?bool,
+    v8_enable_turbofan: ?bool,
+    v8_enable_lite_mode: ?bool,
+    v8_enable_i18n_support: ?bool,
+
     fn asString(self: GnArgs, b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
         const tag = target.result.os.tag;
         const arch = target.result.cpu.arch;
@@ -48,10 +58,26 @@ const GnArgs = struct {
         try args.appendSlice(gpa, b.fmt("is_tsan={}\n", .{self.is_tsan}));
         try args.appendSlice(gpa, b.fmt("v8_enable_sandbox={}\n", .{self.v8_enable_sandbox}));
 
+        // iOS forbids JIT code pages, so wasm stays off there unless overridden.
+        const v8_enable_webassembly = self.v8_enable_webassembly orelse
+            @as(?bool, if (tag == .ios) false else null);
+
+        const feature_flags = [_]struct { name: []const u8, value: ?bool }{
+            .{ .name = "v8_enable_webassembly", .value = v8_enable_webassembly },
+            .{ .name = "v8_enable_maglev", .value = self.v8_enable_maglev },
+            .{ .name = "v8_enable_turbofan", .value = self.v8_enable_turbofan },
+            .{ .name = "v8_enable_lite_mode", .value = self.v8_enable_lite_mode },
+            .{ .name = "v8_enable_i18n_support", .value = self.v8_enable_i18n_support },
+        };
+        for (feature_flags) |flag| {
+            if (flag.value) |v| {
+                try args.appendSlice(gpa, b.fmt("{s}={}\n", .{ flag.name, v }));
+            }
+        }
+
         switch (tag) {
             .ios => {
                 try args.appendSlice(gpa, "v8_enable_pointer_compression=false\n");
-                try args.appendSlice(gpa, "v8_enable_webassembly=false\n");
             },
             .linux => {
                 if (arch == .aarch64) {
@@ -77,6 +103,11 @@ pub fn build(b: *std.Build) !void {
         .is_asan = b.option(bool, "is_asan", "Address sanitizer") orelse false,
         .is_tsan = b.option(bool, "is_tsan", "Thread sanitizer") orelse false,
         .v8_enable_sandbox = b.option(bool, "v8_enable_sandbox", "V8 lightable sandbox") orelse false,
+        .v8_enable_webassembly = b.option(bool, "v8_enable_webassembly", "WebAssembly support (default: V8's default, except iOS where it is off)"),
+        .v8_enable_maglev = b.option(bool, "v8_enable_maglev", "Maglev mid-tier JIT (default: V8's default)"),
+        .v8_enable_turbofan = b.option(bool, "v8_enable_turbofan", "TurboFan optimizing JIT; false requires v8_enable_webassembly=false (default: V8's default)"),
+        .v8_enable_lite_mode = b.option(bool, "v8_enable_lite_mode", "Lite mode: jitless interpreter-only build, implies no sparkplug/maglev/turbofan/wasm (default: false)"),
+        .v8_enable_i18n_support = b.option(bool, "v8_enable_i18n_support", "ICU i18n support: Intl, \\p{} regex escapes, locale APIs (default: true)"),
     };
 
     var build_opts = b.addOptions();
