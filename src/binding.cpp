@@ -2590,6 +2590,14 @@ void v8_inspector__Session__DELETE(v8_inspector::V8InspectorSession* self) {
   delete self;
 }
 
+void v8_inspector__Session__stop(v8_inspector::V8InspectorSession* self) {
+  self->stop();
+}
+
+void v8_inspector__Session__resume(v8_inspector::V8InspectorSession* self) {
+  self->resume();
+}
+
 void v8_inspector__Session__dispatchProtocolMessage(
     v8_inspector::V8InspectorSession *session, v8::Isolate *isolate,
     const char *msg, int msg_len) {
