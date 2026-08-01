@@ -1,6 +1,8 @@
 /.zig-cache/
 /.lp-cache/
 /zig-out/
+.zig-pkg/
+zig-pkg/
 /v8/
 result
 tools
