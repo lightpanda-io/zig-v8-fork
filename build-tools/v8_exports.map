@@ -11,5 +11,10 @@
     v8_inspector__*;
     std__*;
     allocString;
+    /* ICU: bidi, Arabic shaping, line breaking (screenshot renderer). */
+    ubidi_*;
+    ubrk_*;
+    u_shapeArabic_*;
+    u_charMirror_*;
   local: *;
 };
