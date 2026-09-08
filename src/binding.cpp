@@ -1,6 +1,8 @@
 // Based on https://github.com/denoland/rusty_v8/blob/main/src/binding.cc
 
+#include <atomic>
 #include <cassert>
+#include <memory>
 #include "include/libplatform/libplatform.h"
 #include "include/v8-inspector.h"
 #include "include/v8-profiler.h"
@@ -100,6 +102,65 @@ struct make_pod {
     };
 };
 
+// Offsets the wall clock behind Date so an embedder skipping time keeps
+// Date.now() in step with its timers. The monotonic clock paces V8 itself.
+class OffsetClockPlatform final : public v8::Platform {
+public:
+    explicit OffsetClockPlatform(std::unique_ptr<v8::Platform> inner) : inner_(std::move(inner)) {}
+
+    v8::Platform* inner() { return inner_.get(); }
+
+    void SetClockOffsetMillis(double offset_ms) {
+        offset_ms_.store(offset_ms, std::memory_order_relaxed);
+    }
+
+    v8::PageAllocator* GetPageAllocator() override { return inner_->GetPageAllocator(); }
+    v8::ThreadIsolatedAllocator* GetThreadIsolatedAllocator() override { return inner_->GetThreadIsolatedAllocator(); }
+    void OnCriticalMemoryPressure() override { inner_->OnCriticalMemoryPressure(); }
+    int NumberOfWorkerThreads() override { return inner_->NumberOfWorkerThreads(); }
+    std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) override {
+        return inner_->GetForegroundTaskRunner(isolate, priority);
+    }
+    bool IdleTasksEnabled(v8::Isolate* isolate) override { return inner_->IdleTasksEnabled(isolate); }
+    std::unique_ptr<v8::ScopedBoostablePriority> CreateBoostablePriorityScope() override {
+        return inner_->CreateBoostablePriorityScope();
+    }
+    std::unique_ptr<v8::ScopedBlockingCall> CreateBlockingScope(v8::BlockingType blocking_type) override {
+        return inner_->CreateBlockingScope(blocking_type);
+    }
+    double MonotonicallyIncreasingTime() override { return inner_->MonotonicallyIncreasingTime(); }
+    double CurrentClockTimeMillis() override { return inner_->CurrentClockTimeMillis() + offset(); }
+    int64_t CurrentClockTimeMilliseconds() override {
+        return inner_->CurrentClockTimeMilliseconds() + static_cast<int64_t>(offset());
+    }
+    double CurrentClockTimeMillisecondsHighResolution() override {
+        return inner_->CurrentClockTimeMillisecondsHighResolution() + offset();
+    }
+    StackTracePrinter GetStackTracePrinter() override { return inner_->GetStackTracePrinter(); }
+    v8::TracingController* GetTracingController() override { return inner_->GetTracingController(); }
+    void DumpWithoutCrashing() override { inner_->DumpWithoutCrashing(); }
+    v8::HighAllocationThroughputObserver* GetHighAllocationThroughputObserver() override {
+        return inner_->GetHighAllocationThroughputObserver();
+    }
+
+protected:
+    std::unique_ptr<v8::JobHandle> CreateJobImpl(v8::TaskPriority priority, std::unique_ptr<v8::JobTask> job_task, const v8::SourceLocation& location) override {
+        return inner_->CreateJob(priority, std::move(job_task), location);
+    }
+    void PostTaskOnWorkerThreadImpl(v8::TaskPriority priority, std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) override {
+        inner_->PostTaskOnWorkerThread(priority, std::move(task), location);
+    }
+    void PostDelayedTaskOnWorkerThreadImpl(v8::TaskPriority priority, std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) override {
+        inner_->PostDelayedTaskOnWorkerThread(priority, std::move(task), delay_in_seconds, location);
+    }
+
+private:
+    double offset() const { return offset_ms_.load(std::memory_order_relaxed); }
+
+    std::unique_ptr<v8::Platform> inner_;
+    std::atomic<double> offset_ms_{0};
+};
+
 extern "C" {
 
 // Platform
@@ -107,22 +168,28 @@ extern "C" {
 v8::Platform* v8__Platform__NewDefaultPlatform(
         int thread_pool_size,
         bool idle_task_support) {
-    return v8::platform::NewDefaultPlatform(
+    auto inner = v8::platform::NewDefaultPlatform(
         thread_pool_size,
         idle_task_support ? v8::platform::IdleTaskSupport::kEnabled : v8::platform::IdleTaskSupport::kDisabled,
         v8::platform::InProcessStackDumping::kDisabled,
         nullptr
-    ).release();
+    );
+    return new OffsetClockPlatform(std::move(inner));
 }
 
 void v8__Platform__DELETE(v8::Platform* self) { delete self; }
 
+void v8__Platform__SetClockOffsetMillis(v8::Platform* self, double offset_ms) {
+    static_cast<OffsetClockPlatform*>(self)->SetClockOffsetMillis(offset_ms);
+}
+
+// v8::platform static_casts these to DefaultPlatform.
 bool v8__Platform__PumpMessageLoop(
         v8::Platform* platform,
         v8::Isolate* isolate,
         bool wait_for_work) {
     return v8::platform::PumpMessageLoop(
-        platform, isolate,
+        static_cast<OffsetClockPlatform*>(platform)->inner(), isolate,
         wait_for_work ? v8::platform::MessageLoopBehavior::kWaitForWork : v8::platform::MessageLoopBehavior::kDoNotWait);
 }
 
@@ -130,7 +197,7 @@ void v8__Platform__RunIdleTasks(
         v8::Platform* platform,
         v8::Isolate* isolate,
         double idle_time_in_seconds) {
-    v8::platform::RunIdleTasks(platform, isolate, idle_time_in_seconds);
+    v8::platform::RunIdleTasks(static_cast<OffsetClockPlatform*>(platform)->inner(), isolate, idle_time_in_seconds);
 }
 
 // Root

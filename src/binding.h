@@ -152,6 +152,7 @@ Platform* v8__Platform__NewDefaultPlatform(int thread_pool_size, int idle_task_s
 void v8__Platform__DELETE(Platform* platform);
 bool v8__Platform__PumpMessageLoop(Platform* platform, Isolate* isolate, bool wait_for_work);
 void v8__Platform__RunIdleTasks(Platform* platform, Isolate* isolate, double idle_time_in_seconds);
+void v8__Platform__SetClockOffsetMillis(Platform* platform, double offset_ms);
 
 // Root
 const Primitive* v8__Undefined(Isolate* isolate);
