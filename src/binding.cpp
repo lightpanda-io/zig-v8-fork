@@ -126,6 +126,12 @@ bool v8__Platform__PumpMessageLoop(
         wait_for_work ? v8::platform::MessageLoopBehavior::kWaitForWork : v8::platform::MessageLoopBehavior::kDoNotWait);
 }
 
+void v8__Platform__NotifyIsolateShutdown(
+        v8::Platform* platform,
+        v8::Isolate* isolate) {
+    v8::platform::NotifyIsolateShutdown(platform, isolate);
+}
+
 void v8__Platform__RunIdleTasks(
         v8::Platform* platform,
         v8::Isolate* isolate,
