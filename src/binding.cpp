@@ -196,7 +196,8 @@ bool v8__Platform__PumpMessageLoop(
 void v8__Platform__NotifyIsolateShutdown(
         v8::Platform* platform,
         v8::Isolate* isolate) {
-    v8::platform::NotifyIsolateShutdown(platform, isolate);
+    v8::platform::NotifyIsolateShutdown(
+         static_cast<OffsetClockPlatform*>(platform)->inner(), isolate);
 }
 
 void v8__Platform__RunIdleTasks(
