@@ -247,6 +247,8 @@ typedef enum FunctionCodeHandling { kClear, kKeep } FunctionCodeHandling;
 
 // Isolate
 Isolate* v8__Isolate__New(CreateParams* params);
+// Call on the isolate's thread; does not allocate or enter JavaScript.
+bool v8__Isolate__HasStackHeadroom(Isolate* isolate, usize reserve_bytes);
 void v8__Isolate__Enter(Isolate* isolate);
 void v8__Isolate__Exit(Isolate* isolate);
 void v8__Isolate__Dispose(Isolate* isolate);
