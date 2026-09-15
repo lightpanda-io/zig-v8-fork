@@ -247,11 +247,15 @@ typedef enum FunctionCodeHandling { kClear, kKeep } FunctionCodeHandling;
 
 // Isolate
 Isolate* v8__Isolate__New(CreateParams* params);
-// Call on the isolate's thread; does not allocate or enter JavaScript.
-bool v8__Isolate__HasStackHeadroom(Isolate* isolate, usize reserve_bytes);
 void v8__Isolate__Enter(Isolate* isolate);
 void v8__Isolate__Exit(Isolate* isolate);
 void v8__Isolate__Dispose(Isolate* isolate);
+// Returns true if at least reserve_bytes of stack remain before V8's JS stack
+// limit. Inverts v8::internal::StackLimitCheck::JsHasOverflowed. The limit is
+// V8's own, which already sits above the bottom of the OS stack, so
+// reserve_bytes is headroom on top of that margin, not raw stack left. Call on
+// the isolate's thread; does not allocate or enter JavaScript.
+bool v8__Isolate__HasStackHeadroom(Isolate* isolate, usize reserve_bytes);
 Isolate* v8__Isolate__GetCurrent();
 Context* v8__Isolate__GetCurrentContext(Isolate* isolate);
 Context* v8__Isolate__GetIncumbentContext(Isolate* isolate);

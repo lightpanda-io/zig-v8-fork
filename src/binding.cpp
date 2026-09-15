@@ -361,7 +361,7 @@ v8::Isolate* v8__Isolate__New(const v8::Isolate::CreateParams& params) {
 
 void v8__Isolate__Dispose(v8::Isolate* isolate) { isolate->Dispose(); }
 
-bool v8__Isolate__HasStackHeadroom(v8::Isolate* isolate, size_t reserve_bytes) {
+bool v8__Isolate__HasStackHeadroom(v8::Isolate* isolate, uintptr_t reserve_bytes) {
     auto* internal = reinterpret_cast<v8::internal::Isolate*>(isolate);
     return !v8::internal::StackLimitCheck(internal).JsHasOverflowed(reserve_bytes);
 }
