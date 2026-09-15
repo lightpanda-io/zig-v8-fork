@@ -1804,6 +1804,48 @@ const v8::Value* v8__FunctionCallbackInfo__Data(
     return local_to_ptr(self.Data());
 }
 
+// WasmStreaming
+
+void v8__Isolate__SetWasmStreamingCallback(
+        v8::Isolate* isolate,
+        v8::WasmStreamingCallback callback) {
+    isolate->SetWasmStreamingCallback(callback);
+}
+
+SharedPtr v8__WasmStreaming__Unpack(
+        v8::Isolate* isolate,
+        const v8::Value& value) {
+    return make_pod<SharedPtr>(v8::WasmStreaming::Unpack(isolate, ptr_to_local(&value)));
+}
+
+void std__shared_ptr__v8__WasmStreaming__reset(std::shared_ptr<v8::WasmStreaming>* self) { self->reset(); }
+
+void v8__WasmStreaming__OnBytesReceived(
+        const std::shared_ptr<v8::WasmStreaming>& self,
+        const uint8_t* bytes,
+        size_t len) {
+    self->OnBytesReceived(bytes, len);
+}
+
+void v8__WasmStreaming__Finish(const std::shared_ptr<v8::WasmStreaming>& self) {
+    // No compiled-module cache. V8 accepts a caching callback only after
+    // SetHasCompiledModuleBytes, so the callback must be empty.
+    self->Finish(v8::WasmStreaming::ModuleCachingCallback());
+}
+
+void v8__WasmStreaming__Abort(
+        const std::shared_ptr<v8::WasmStreaming>& self,
+        const v8::Value* exception) {
+    self->Abort(ptr_to_maybe_local(exception));
+}
+
+void v8__WasmStreaming__SetUrl(
+        const std::shared_ptr<v8::WasmStreaming>& self,
+        const char* url,
+        size_t len) {
+    self->SetUrl(url, len);
+}
+
 bool v8__FunctionCallbackInfo__IsConstructCall(
     const v8::FunctionCallbackInfo<v8::Value>& self) {
     return self.IsConstructCall();

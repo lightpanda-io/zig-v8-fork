@@ -900,6 +900,18 @@ bool v8__FunctionCallbackInfo__IsConstructCall(
 const Value* v8__FunctionCallbackInfo__NewTarget(
     const FunctionCallbackInfo* self);
 
+// WasmStreaming
+typedef void (*WasmStreamingCallback)(const FunctionCallbackInfo* info);
+void v8__Isolate__SetWasmStreamingCallback(
+    Isolate* isolate,
+    WasmStreamingCallback callback);
+SharedPtr v8__WasmStreaming__Unpack(Isolate* isolate, const Value* value);
+void std__shared_ptr__v8__WasmStreaming__reset(SharedPtr* self);
+void v8__WasmStreaming__OnBytesReceived(const SharedPtr* self, const uint8_t* bytes, size_t len);
+void v8__WasmStreaming__Finish(const SharedPtr* self);
+void v8__WasmStreaming__Abort(const SharedPtr* self, const Value* exception);
+void v8__WasmStreaming__SetUrl(const SharedPtr* self, const char* url, size_t len);
+
 // PropertyCallbackInfo
 Isolate* v8__PropertyCallbackInfo__GetIsolate(
     const PropertyCallbackInfo* self);
