@@ -595,6 +595,8 @@ bool v8__Value__IsAsyncFunction(const Value* self);
 bool v8__Value__IsPromise(const Value* self);
 bool v8__Value__IsBoolean(const Value* self);
 bool v8__Value__IsBooleanObject(const Value* self);
+bool v8__Value__IsStringObject(const Value* self);
+bool v8__Value__IsSymbolObject(const Value* self);
 bool v8__Value__IsInt32(const Value* self);
 bool v8__Value__IsUint32(const Value* self);
 bool v8__Value__IsNumber(const Value* self);
@@ -637,6 +639,12 @@ bool v8__Value__IsProxy(const Value* self);
 bool v8__Value__IsGeneratorObject(const Value* self);
 const Value* v8__Date__New(const Context* context, double time);
 double v8__Date__ValueOf(const Date* self);
+const String* v8__Date__ToISOString(const Date* self);
+double v8__NumberObject__ValueOf(const Value* self);
+const BigInt* v8__BigIntObject__ValueOf(const Value* self);
+bool v8__BooleanObject__ValueOf(const Value* self);
+const String* v8__StringObject__ValueOf(const Value* self);
+const Symbol* v8__SymbolObject__ValueOf(const Value* self);
 bool v8__Value__StrictEquals(const Value* self, const Value* other);
 void v8__Value__InstanceOf(
     const Value* self,
@@ -750,6 +758,15 @@ const Array* v8__Object__GetPropertyNames(
     const Object* self,
     const Context* ctx);
 const Value* v8__Object__GetPrototype(const Object* self);
+const Value* v8__Object__GetOwnPropertyDescriptor(
+    const Object* self,
+    const Context* ctx,
+    const Name* key);
+void v8__Object__HasOwnProperty(
+    const Object* self,
+    const Context* ctx,
+    const Name* key,
+    MaybeBool* out);
 void v8__Object__SetPrototype(
     const Object* self,
     const Context* ctx,
@@ -782,6 +799,8 @@ const Object* v8__RegExp__Exec(
     const RegExp* self,
     const Context* ctx,
     const String* subject);
+const String* v8__RegExp__GetSource(const RegExp* self);
+int v8__RegExp__GetFlags(const RegExp* self);
 
 // Exception
 const Value* v8__Exception__Error(const String* message);
@@ -986,6 +1005,9 @@ const Object* v8__Function__NewInstance(
     const Value* const argv[]);
 const Value* v8__Function__GetName(const Function* self);
 void v8__Function__SetName(const Function* self, const String* name);
+const String* v8__Function__FunctionProtoToString(
+    const Function* self,
+    const Context* ctx);
 
 // External
 const External* v8__External__New(
