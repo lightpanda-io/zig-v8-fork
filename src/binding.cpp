@@ -1239,6 +1239,10 @@ bool v8__Value__IsBoolean(const v8::Value& self) { return self.IsBoolean(); }
 
 bool v8__Value__IsBooleanObject(const v8::Value& self) { return self.IsBooleanObject(); }
 
+bool v8__Value__IsStringObject(const v8::Value& self) { return self.IsStringObject(); }
+
+bool v8__Value__IsSymbolObject(const v8::Value& self) { return self.IsSymbolObject(); }
+
 bool v8__Value__IsInt32(const v8::Value& self) { return self.IsInt32(); }
 
 bool v8__Value__IsUint32(const v8::Value& self) { return self.IsUint32(); }
@@ -1324,6 +1328,26 @@ const v8::Value* v8__Date__New(const v8::Context* context, double time) {
 }
 
 double v8__Date__ValueOf(const v8::Date& self) { return self.ValueOf(); }
+
+const v8::String* v8__Date__ToISOString(const v8::Date& self) {
+    return local_to_ptr(self.ToISOString());
+}
+
+double v8__NumberObject__ValueOf(const v8::NumberObject& self) { return self.ValueOf(); }
+
+const v8::BigInt* v8__BigIntObject__ValueOf(const v8::BigIntObject& self) {
+    return local_to_ptr(self.ValueOf());
+}
+
+bool v8__BooleanObject__ValueOf(const v8::BooleanObject& self) { return self.ValueOf(); }
+
+const v8::String* v8__StringObject__ValueOf(const v8::StringObject& self) {
+    return local_to_ptr(self.ValueOf());
+}
+
+const v8::Symbol* v8__SymbolObject__ValueOf(const v8::SymbolObject& self) {
+    return local_to_ptr(self.ValueOf());
+}
 
 bool v8__Value__StrictEquals(const v8::Value& self, const v8::Value& other) {
     return self.StrictEquals(ptr_to_local(&other));
@@ -1615,6 +1639,23 @@ const v8::Value* v8__Object__GetPrototype(
   return local_to_ptr(ptr_to_local(&self)->GetPrototypeV2());
 }
 
+const v8::Value* v8__Object__GetOwnPropertyDescriptor(
+        const v8::Object& self,
+        const v8::Context& ctx,
+        const v8::Name& key) {
+    return maybe_local_to_ptr(
+        ptr_to_local(&self)->GetOwnPropertyDescriptor(ptr_to_local(&ctx), ptr_to_local(&key))
+    );
+}
+
+void v8__Object__HasOwnProperty(
+        const v8::Object& self,
+        const v8::Context& ctx,
+        const v8::Name& key,
+        v8::Maybe<bool>* out) {
+    *out = ptr_to_local(&self)->HasOwnProperty(ptr_to_local(&ctx), ptr_to_local(&key));
+}
+
 void v8__Object__SetPrototype(
         const v8::Object& self,
         const v8::Context& ctx,
@@ -1713,6 +1754,14 @@ const v8::Object* v8__RegExp__Exec(
     return maybe_local_to_ptr(
         ptr_to_local(&self)->Exec(ptr_to_local(&ctx), ptr_to_local(&subject))
     );
+}
+
+const v8::String* v8__RegExp__GetSource(const v8::RegExp& self) {
+    return local_to_ptr(self.GetSource());
+}
+
+int v8__RegExp__GetFlags(const v8::RegExp& self) {
+    return static_cast<int>(self.GetFlags());
 }
 
 // FunctionCallbackInfo
@@ -1969,6 +2018,14 @@ const v8::Object* v8__Function__NewInstance(
 
 const v8::Value* v8__Function__GetName(const v8::Function& self) {
     return local_to_ptr(self.GetName());
+}
+
+const v8::String* v8__Function__FunctionProtoToString(
+        const v8::Function& self,
+        const v8::Context& ctx) {
+    return maybe_local_to_ptr(
+        ptr_to_local(&self)->FunctionProtoToString(ptr_to_local(&ctx))
+    );
 }
 
 void v8__Function__SetName(
