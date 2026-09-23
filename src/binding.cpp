@@ -14,6 +14,7 @@
 #include "src/debug/debug-interface.h"
 
 #include "inspector.h"
+#include "unicode/locid.h"
 
 template <class T, class... Args>
 class Wrapper {
@@ -344,6 +345,14 @@ void v8__V8__InitializePlatform(v8::Platform* platform) {
 void v8__V8__Initialize() { v8::V8::Initialize(); }
 
 bool v8__V8__InitializeICU() { return v8::V8::InitializeICU(); }
+
+bool v8__V8__SetDefaultLocale(const char* bcp47_tag) {
+    UErrorCode status = U_ZERO_ERROR;
+    const icu::Locale locale = icu::Locale::forLanguageTag(bcp47_tag, status);
+    if (U_FAILURE(status) || locale.isBogus()) return false;
+    icu::Locale::setDefault(locale, status);
+    return U_SUCCESS(status);
+}
 
 int v8__V8__Dispose() { return v8::V8::Dispose(); }
 

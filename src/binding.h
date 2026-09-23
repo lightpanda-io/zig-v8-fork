@@ -224,6 +224,10 @@ const BigInt64Array* v8__BigInt64Array__New(
 void v8__V8__InitializePlatform(Platform* platform);
 void v8__V8__Initialize();
 bool v8__V8__InitializeICU();
+// ICU's default locale, which Intl falls back to, from a BCP 47 tag. Unlike
+// LC_ALL it leaves the C library's locale alone. Call after InitializeICU and
+// before creating an isolate. False when the tag does not parse.
+bool v8__V8__SetDefaultLocale(const char* bcp47_tag);
 int v8__V8__Dispose();
 void v8__V8__DisposePlatform();
 const char* v8__V8__GetVersion();

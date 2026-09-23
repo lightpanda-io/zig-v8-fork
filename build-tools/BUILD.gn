@@ -23,6 +23,7 @@ config("c_v8_config") {
     "//:external_config",
     "//:toolchain",
     "//:features",
+    "//third_party/icu:icu_config",
   ]
   # This config only applies to binding.cpp, not to the V8 deps. It has no
   # impact when we link statically. Having it always on means we can relink
