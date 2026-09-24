@@ -547,18 +547,14 @@ typedef enum NewStringType {
      */
     kInternalized
 } NewStringType;
-typedef enum WriteOptions {
-    NO_OPTIONS = 0,
-    HINT_MANY_WRITES_EXPECTED = 1,
-    NO_NULL_TERMINATION = 2,
-    PRESERVE_ONE_BYTE_NULL = 4,
-    // Used by WriteUtf8 to replace orphan surrogate code units with the
-    // unicode replacement character. Needs to be set to guarantee valid UTF-8
-    // output.
-    REPLACE_INVALID_UTF8 = 8
-} WriteOptions;
+// Mirrors v8::String::WriteFlags.
+typedef enum WriteFlags {
+    WRITE_NONE = 0,
+    WRITE_NULL_TERMINATE = 1,
+    WRITE_REPLACE_INVALID_UTF8 = 2
+} WriteFlags;
 String* v8__String__NewFromUtf8(Isolate* isolate, const char* data, NewStringType type, int length);
-size_t v8__String__WriteUtf8(const String* str, Isolate* isolate, const char* buf, size_t len, WriteOptions options);
+size_t v8__String__WriteUtf8(const String* str, Isolate* isolate, char* buf, size_t capacity, WriteFlags flags, size_t* processed_characters_return);
 int v8__String__Utf8Length(const String* str, Isolate* isolate);
 
 // One-byte (Latin-1) string APIs. NewFromOneByte maps each input byte 0..255
