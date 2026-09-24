@@ -1018,9 +1018,10 @@ size_t v8__String__WriteUtf8(
         const v8::String& str,
         v8::Isolate* isolate,
         char* buffer,
-        size_t length,
-        int options) {
-    return str.WriteUtf8V2(isolate, buffer, length, options);
+        size_t capacity,
+        int flags,
+        size_t* processed_characters_return) {
+    return str.WriteUtf8V2(isolate, buffer, capacity, flags, processed_characters_return);
 }
 
 int v8__String__Utf8Length(const v8::String& self, v8::Isolate* isolate) {
