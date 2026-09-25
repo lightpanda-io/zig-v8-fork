@@ -154,6 +154,8 @@ bool v8__Platform__PumpMessageLoop(Platform* platform, Isolate* isolate, bool wa
 void v8__Platform__NotifyIsolateShutdown(Platform* platform, Isolate* isolate);
 void v8__Platform__RunIdleTasks(Platform* platform, Isolate* isolate, double idle_time_in_seconds);
 void v8__Platform__SetClockOffsetMillis(Platform* platform, double offset_ms);
+typedef void (*ForegroundTaskPostedCallback)(void* ctx, double delay_in_seconds);
+void v8__Platform__SetForegroundTaskPostedCallback(Platform* platform, Isolate* isolate, ForegroundTaskPostedCallback callback, void* ctx);
 
 // Root
 const Primitive* v8__Undefined(Isolate* isolate);

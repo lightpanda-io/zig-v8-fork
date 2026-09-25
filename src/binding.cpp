@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cassert>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 #include "include/libplatform/libplatform.h"
 #include "include/v8-inspector.h"
 #include "include/v8-profiler.h"
@@ -104,8 +106,55 @@ struct make_pod {
     };
 };
 
+typedef void (*ForegroundTaskPostedCallback)(void* ctx, double delay_in_seconds);
+
+class OffsetClockPlatform;
+
+// Wraps DefaultPlatform's foreground runner so an embedder parked in its own
+// event loop (rather than in PumpMessageLoop(kWaitForWork)) hears about posts.
+class NotifyingTaskRunner final : public v8::TaskRunner {
+public:
+    NotifyingTaskRunner(std::shared_ptr<v8::TaskRunner> inner, OffsetClockPlatform* platform, v8::Isolate* isolate)
+        : inner_(std::move(inner)), platform_(platform), isolate_(isolate) {}
+
+    bool IdleTasksEnabled() override { return inner_->IdleTasksEnabled(); }
+    bool NonNestableTasksEnabled() const override { return inner_->NonNestableTasksEnabled(); }
+    bool NonNestableDelayedTasksEnabled() const override { return inner_->NonNestableDelayedTasksEnabled(); }
+
+protected:
+    // Post before notifying: the embedder may pump the moment it is woken.
+    void PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) override {
+        inner_->PostTask(std::move(task), location);
+        notify(0);
+    }
+    void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) override {
+        inner_->PostNonNestableTask(std::move(task), location);
+        notify(0);
+    }
+    void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) override {
+        inner_->PostDelayedTask(std::move(task), delay_in_seconds, location);
+        notify(delay_in_seconds);
+    }
+    void PostNonNestableDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) override {
+        inner_->PostNonNestableDelayedTask(std::move(task), delay_in_seconds, location);
+        notify(delay_in_seconds);
+    }
+    // Idle tasks only run when the embedder calls RunIdleTasks.
+    void PostIdleTaskImpl(std::unique_ptr<v8::IdleTask> task, const v8::SourceLocation& location) override {
+        inner_->PostIdleTask(std::move(task), location);
+    }
+
+private:
+    inline void notify(double delay_in_seconds);
+
+    std::shared_ptr<v8::TaskRunner> inner_;
+    OffsetClockPlatform* platform_;
+    v8::Isolate* isolate_;
+};
+
 // Offsets the wall clock behind Date so an embedder skipping time keeps
 // Date.now() in step with its timers. The monotonic clock paces V8 itself.
+// Also routes foreground posts through NotifyingTaskRunner.
 class OffsetClockPlatform final : public v8::Platform {
 public:
     explicit OffsetClockPlatform(std::unique_ptr<v8::Platform> inner) : inner_(std::move(inner)) {}
@@ -116,12 +165,33 @@ public:
         offset_ms_.store(offset_ms, std::memory_order_relaxed);
     }
 
+    // A null callback unregisters. Once this returns, the previous callback
+    // is not running and won't be called again.
+    void SetForegroundTaskPostedCallback(v8::Isolate* isolate, ForegroundTaskPostedCallback callback, void* ctx) {
+        std::lock_guard<std::mutex> guard(callbacks_mutex_);
+        if (callback == nullptr) {
+            callbacks_.erase(isolate);
+        } else {
+            callbacks_[isolate] = {callback, ctx};
+        }
+    }
+
+    void NotifyForegroundTaskPosted(v8::Isolate* isolate, double delay_in_seconds) {
+        std::lock_guard<std::mutex> guard(callbacks_mutex_);
+        auto it = callbacks_.find(isolate);
+        if (it != callbacks_.end()) {
+            it->second.callback(it->second.ctx, delay_in_seconds);
+        }
+    }
+
     v8::PageAllocator* GetPageAllocator() override { return inner_->GetPageAllocator(); }
     v8::ThreadIsolatedAllocator* GetThreadIsolatedAllocator() override { return inner_->GetThreadIsolatedAllocator(); }
     void OnCriticalMemoryPressure() override { inner_->OnCriticalMemoryPressure(); }
     int NumberOfWorkerThreads() override { return inner_->NumberOfWorkerThreads(); }
+    // Always wrapped: V8 caches runners at isolate setup, before an embedder
+    // can register, so the callback is looked up per post.
     std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) override {
-        return inner_->GetForegroundTaskRunner(isolate, priority);
+        return std::make_shared<NotifyingTaskRunner>(inner_->GetForegroundTaskRunner(isolate, priority), this, isolate);
     }
     bool IdleTasksEnabled(v8::Isolate* isolate) override { return inner_->IdleTasksEnabled(isolate); }
     std::unique_ptr<v8::ScopedBoostablePriority> CreateBoostablePriorityScope() override {
@@ -159,9 +229,20 @@ protected:
 private:
     double offset() const { return offset_ms_.load(std::memory_order_relaxed); }
 
+    struct Callback {
+        ForegroundTaskPostedCallback callback;
+        void* ctx;
+    };
+
     std::unique_ptr<v8::Platform> inner_;
     std::atomic<double> offset_ms_{0};
+    std::mutex callbacks_mutex_;
+    std::unordered_map<v8::Isolate*, Callback> callbacks_;
 };
+
+void NotifyingTaskRunner::notify(double delay_in_seconds) {
+    platform_->NotifyForegroundTaskPosted(isolate_, delay_in_seconds);
+}
 
 extern "C" {
 
@@ -183,6 +264,14 @@ void v8__Platform__DELETE(v8::Platform* self) { delete self; }
 
 void v8__Platform__SetClockOffsetMillis(v8::Platform* self, double offset_ms) {
     static_cast<OffsetClockPlatform*>(self)->SetClockOffsetMillis(offset_ms);
+}
+
+void v8__Platform__SetForegroundTaskPostedCallback(
+        v8::Platform* self,
+        v8::Isolate* isolate,
+        ForegroundTaskPostedCallback callback,
+        void* ctx) {
+    static_cast<OffsetClockPlatform*>(self)->SetForegroundTaskPostedCallback(isolate, callback, ctx);
 }
 
 // v8::platform static_casts these to DefaultPlatform.
