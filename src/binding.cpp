@@ -3572,31 +3572,31 @@ static simdutf_result to_c_result(const simdutf::result &r) {
   return out;
 }
 
-bool simdutf_validate_utf8(const char *buf, size_t len) {
+bool v8__simdutf_validate_utf8(const char *buf, size_t len) {
   return simdutf::validate_utf8(buf, len);
 }
 
-bool simdutf_validate_ascii(const char *buf, size_t len) {
+bool v8__simdutf_validate_ascii(const char *buf, size_t len) {
   return simdutf::validate_ascii(buf, len);
 }
-simdutf_result simdutf_validate_ascii_with_errors(const char *buf, size_t len) {
+simdutf_result v8__simdutf_validate_ascii_with_errors(const char *buf, size_t len) {
   return to_c_result(simdutf::validate_ascii_with_errors(buf, len));
 }
 
-size_t simdutf_count_utf8(const char *input, size_t length) {
+size_t v8__simdutf_count_utf8(const char *input, size_t length) {
   return simdutf::count_utf8(input, length);
 }
 
-size_t simdutf_utf8_length_from_latin1(const char *input, size_t length) {
+size_t v8__simdutf_utf8_length_from_latin1(const char *input, size_t length) {
   return simdutf::utf8_length_from_latin1(input, length);
 }
-size_t simdutf_utf16_length_from_utf8(const char *input, size_t length) {
+size_t v8__simdutf_utf16_length_from_utf8(const char *input, size_t length) {
   return simdutf::utf16_length_from_utf8(input, length);
 }
 
 /* Conversions: latin1 <-> utf8, utf8 <-> utf16/utf32, utf16 <-> utf8, etc. */
-size_t simdutf_convert_latin1_to_utf8(const char *input, size_t length,
-                                      char *output) {
+size_t v8__simdutf_convert_latin1_to_utf8(const char *input, size_t length,
+                                           char *output) {
   return simdutf::convert_latin1_to_utf8(input, length, output);
 }
 
@@ -3620,16 +3620,16 @@ typedef enum simdutf_last_chunk_handling_options {
 } simdutf_last_chunk_handling_options;
 
 /* --- base64 helpers --- */
-size_t simdutf_maximal_binary_length_from_base64(const char *input,
-                                                 size_t length) {
+size_t v8__simdutf_maximal_binary_length_from_base64(const char *input,
+                                                      size_t length) {
   return simdutf::maximal_binary_length_from_base64(input, length);
 }
-size_t simdutf_maximal_binary_length_from_base64_utf16(const char16_t *input,
-                                                       size_t length) {
+size_t v8__simdutf_maximal_binary_length_from_base64_utf16(const char16_t *input,
+                                                            size_t length) {
   return simdutf::maximal_binary_length_from_base64(input, length);
 }
 
-simdutf_result simdutf_base64_to_binary(
+simdutf_result v8__simdutf_base64_to_binary(
     const char *input, size_t length, char *output,
     simdutf_base64_options options,
     simdutf_last_chunk_handling_options last_chunk_options) {
@@ -3638,20 +3638,20 @@ simdutf_result simdutf_base64_to_binary(
       static_cast<simdutf::last_chunk_handling_options>(last_chunk_options)));
 }
 
-size_t simdutf_base64_length_from_binary(size_t length,
-                                         simdutf_base64_options options) {
+size_t v8__simdutf_base64_length_from_binary(size_t length,
+                                              simdutf_base64_options options) {
   return simdutf::base64_length_from_binary(
       length, static_cast<simdutf::base64_options>(options));
 }
 
-size_t simdutf_binary_to_base64(const char *input, size_t length, char *output,
-                                simdutf_base64_options options) {
+size_t v8__simdutf_binary_to_base64(const char *input, size_t length, char *output,
+                                     simdutf_base64_options options) {
   return simdutf::binary_to_base64(
       input, length, output, static_cast<simdutf::base64_options>(options));
 }
 
 /* Not part of simdutf's C API; wrapped the same way. */
-size_t simdutf_trim_partial_utf8(const char *input, size_t length) {
+size_t v8__simdutf_trim_partial_utf8(const char *input, size_t length) {
   return simdutf::trim_partial_utf8(input, length);
 }
 
