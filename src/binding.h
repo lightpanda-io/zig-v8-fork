@@ -626,6 +626,7 @@ bool v8__Value__IsFloat16Array(const Value* self);
 bool v8__Value__IsFloat32Array(const Value* self);
 bool v8__Value__IsFloat64Array(const Value* self);
 bool v8__Value__IsArrayBuffer(const Value* self);
+bool v8__Value__IsSharedArrayBuffer(const Value* self);
 bool v8__Value__IsArrayBufferView(const Value* self);
 bool v8__Value__IsUint8Array(const Value* self);
 bool v8__Value__IsExternal(const Value* self);
