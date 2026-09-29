@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .depot_tools = .{
-            .url = "https://pkg.lightpanda.io/chromium/depot_tools.git-4ce8ba39a3488397a2d1494f167020f21de502f3.tar.gz",
-            .hash = "N-V-__8AABDOXwDW4TLrTiydikRCN2ym9hJI1GKGR09ZLBvY",
+            .url = "https://pkg.lightpanda.io/chromium/depot_tools.git-cb70c994a656601dc6a0d423f49ff57503bd70bc.tar.gz",
+            .hash = "N-V-__8AAAiweADQcHF_a9XhdWKFb8200c6bWNr5ZT3oVdi9",
         },
     },
     .paths = .{
