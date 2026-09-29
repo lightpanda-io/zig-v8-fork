@@ -1392,6 +1392,8 @@ bool v8__Value__IsFloat64Array(const v8::Value& self) { return self.IsFloat64Arr
 
 bool v8__Value__IsArrayBuffer(const v8::Value& self) { return self.IsArrayBuffer(); }
 
+bool v8__Value__IsSharedArrayBuffer(const v8::Value& self) { return self.IsSharedArrayBuffer(); }
+
 bool v8__Value__IsArrayBufferView(const v8::Value& self) { return self.IsArrayBufferView(); }
 
 bool v8__Value__IsExternal(const v8::Value& self) { return self.IsExternal(); }
