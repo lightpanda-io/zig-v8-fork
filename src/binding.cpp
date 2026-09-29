@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include "include/cppgc/persistent.h"
 #include "include/libplatform/libplatform.h"
 #include "include/v8-inspector.h"
 #include "include/v8-profiler.h"
@@ -478,8 +479,8 @@ const v8::Context* v8__Isolate__GetIncumbentContext(v8::Isolate* isolate) {
     return local_to_ptr(isolate->GetIncumbentContext());
 }
 
-int v8__Isolate__ContextDisposedNotification(v8::Isolate* isolate) {
-    return isolate->ContextDisposedNotification();
+void v8__Isolate__ContextDisposedNotification(v8::Isolate* isolate) {
+    isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
 }
 
 size_t v8__Isolate__CreateParams__SIZEOF() {
@@ -647,35 +648,44 @@ bool v8__Isolate__HasPendingBackgroundTasks(v8::Isolate* self) {
 
 // MicrotaskQueue
 
-v8::MicrotaskQueue* v8__MicrotaskQueue__New(
+// The queue lives on the isolate's CppHeap, and V8 only holds it strongly while
+// a context is attached to it. The Persistent keeps it alive from New until
+// DELETE, after which the GC reclaims it. Must be created and deleted on the
+// isolate's thread.
+struct v8__MicrotaskQueue {
+    explicit v8__MicrotaskQueue(v8::MicrotaskQueue* queue) : queue(queue) {}
+    cppgc::Persistent<v8::MicrotaskQueue> queue;
+};
+
+v8__MicrotaskQueue* v8__MicrotaskQueue__New(
         v8::Isolate* isolate,
         v8::MicrotasksPolicy policy) {
-    return v8::MicrotaskQueue::New(isolate, policy).release();
+    return new v8__MicrotaskQueue(v8::MicrotaskQueue::New(isolate, policy));
 }
 
-void v8__MicrotaskQueue__DELETE(v8::MicrotaskQueue* self) {
+void v8__MicrotaskQueue__DELETE(v8__MicrotaskQueue* self) {
     delete self;
 }
 
 void v8__MicrotaskQueue__PerformCheckpoint(
-        v8::MicrotaskQueue* self,
+        v8__MicrotaskQueue* self,
         v8::Isolate* isolate) {
-    self->PerformCheckpoint(isolate);
+    self->queue->PerformCheckpoint(isolate);
 }
 
 void v8__MicrotaskQueue__EnqueueMicrotask(
-        v8::MicrotaskQueue* self,
+        v8__MicrotaskQueue* self,
         v8::Isolate* isolate,
         v8::MicrotaskCallback callback,
         void* data) {
-    self->EnqueueMicrotask(isolate, callback, data);
+    self->queue->EnqueueMicrotask(isolate, callback, data);
 }
 
 void v8__MicrotaskQueue__EnqueueMicrotaskFunc(
-    v8::MicrotaskQueue* self,
+    v8__MicrotaskQueue* self,
     v8::Isolate* isolate,
     const v8::Function* function) {
-    self->EnqueueMicrotask(isolate, ptr_to_local(function));
+    self->queue->EnqueueMicrotask(isolate, ptr_to_local(function));
 }
 
 const v8::Data* v8__Isolate__GetDataFromSnapshotOnce(v8::Isolate *self, size_t idx) {
@@ -775,7 +785,7 @@ void v8__HandleScope__DESTRUCT(v8::HandleScope* scope) { scope->~HandleScope(); 
 typedef struct v8__ContextConfig {
     const v8::ObjectTemplate* global_template;
     const v8::Value* global_object;
-    v8::MicrotaskQueue* microtask_queue;
+    v8__MicrotaskQueue* microtask_queue;
 } v8__ContextConfig;
 
 v8::Context* v8__Context__New(
@@ -797,7 +807,7 @@ v8::Context* v8__Context__New__Config(
             ptr_to_maybe_local(config->global_template),
             ptr_to_maybe_local(config->global_object),
             v8::DeserializeInternalFieldsCallback(),
-            config->microtask_queue
+            config->microtask_queue ? config->microtask_queue->queue.Get() : nullptr
         )
     );
 }
@@ -820,7 +830,7 @@ v8::Context* v8__Context__FromSnapshot__Config(
         v8::DeserializeInternalFieldsCallback(),
         nullptr,  // extensions
         config ? ptr_to_maybe_local(config->global_object) : v8::MaybeLocal<v8::Value>(),
-        config ? config->microtask_queue : nullptr
+        config && config->microtask_queue ? config->microtask_queue->queue.Get() : nullptr
     );
     if (maybe.IsEmpty()) {
         return nullptr;
@@ -1554,7 +1564,7 @@ void v8__ObjectTemplate__SetNativeDataProperty__DEFAULT2(
         const v8::ObjectTemplate& self,
         const v8::Name& key,
         const v8::AccessorNameGetterCallback getter,
-        const v8::AccessorNameSetterCallback setter) {
+        const v8::AccessorNameSetterCallbackV2 setter) {
     ptr_to_local(&self)->SetNativeDataProperty(ptr_to_local(&key), getter, setter);
 }
 
@@ -1741,7 +1751,7 @@ const v8::Array* v8__Object__GetPropertyNames(
 
 const v8::Value* v8__Object__GetPrototype(
        const v8::Object& self) {
-  return local_to_ptr(ptr_to_local(&self)->GetPrototypeV2());
+  return local_to_ptr(ptr_to_local(&self)->GetPrototype());
 }
 
 const v8::Value* v8__Object__GetOwnPropertyDescriptor(
@@ -1766,7 +1776,7 @@ void v8__Object__SetPrototype(
         const v8::Context& ctx,
         const v8::Object& prototype,
         v8::Maybe<bool>* out) {
-  *out = ptr_to_local(&self)->SetPrototypeV2(ptr_to_local(&ctx), ptr_to_local(&prototype));
+  *out = ptr_to_local(&self)->SetPrototype(ptr_to_local(&ctx), ptr_to_local(&prototype));
 }
 
 void v8__Object__SetAlignedPointerInInternalField(

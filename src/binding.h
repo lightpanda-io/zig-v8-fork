@@ -268,7 +268,7 @@ Context* v8__Isolate__GetIncumbentContext(Isolate* isolate);
 const Value* v8__Isolate__ThrowException(
     Isolate* isolate,
     const Value* exception);
-int v8__Isolate__ContextDisposedNotification(Isolate* isolate);
+void v8__Isolate__ContextDisposedNotification(Isolate* isolate);
 void v8__Isolate__SetHostImportModuleDynamicallyCallback(
     Isolate* isolate,
     HostImportModuleDynamicallyCallback callback);
@@ -1179,6 +1179,7 @@ typedef uint32_t (*IndexedPropertyEnumeratorCallback)(const PropertyCallbackInfo
 typedef void (*IndexedPropertyDefinerCallback)(uint32_t, PropertyDescriptor* desc, const PropertyCallbackInfo*);
 typedef void (*IndexedPropertyDescriptorCallback)(uint32_t, const PropertyCallbackInfo*);
 typedef uint32_t (*IndexedPropertyIndexOfCallback)(const Value*, uint32_t, uint32_t, uint32_t*, const PropertyCallbackInfo*);
+typedef void (*IndexedPropertyIterableToListCallback)(const PropertyCallbackInfo*);
 typedef struct IndexedPropertyHandlerConfiguration {
     IndexedPropertyGetterCallback getter;
     IndexedPropertySetterCallback setter;
@@ -1188,6 +1189,7 @@ typedef struct IndexedPropertyHandlerConfiguration {
     IndexedPropertyDefinerCallback definer;
     IndexedPropertyDescriptorCallback descriptor;
     IndexedPropertyIndexOfCallback index_of;
+    IndexedPropertyIterableToListCallback iterable_to_list;
     const Value* data;
     PropertyHandlerFlags flags;
 } IndexedPropertyHandlerConfiguration;

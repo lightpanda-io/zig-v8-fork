@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const V8_VERSION: []const u8 = "14.9.207.35";
+const V8_VERSION: []const u8 = "15.5.35.13";
 
 const LazyPath = std.Build.LazyPath;
 
