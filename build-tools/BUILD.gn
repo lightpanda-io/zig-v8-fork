@@ -10,6 +10,7 @@ static_library("c_v8") {
     "//:v8",
     "//:v8_libbase",
     "//:v8_libplatform",
+    "//third_party/simdutf",
   ]
   configs -= [
     "//build/config/compiler:default_init_stack_vars",
