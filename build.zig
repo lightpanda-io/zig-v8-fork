@@ -651,6 +651,11 @@ fn bootstrapV8(
         "sync",
     });
     gclient_sync.setCwd(b.graph.cwdRelativePath(v8_dir));
+    // WIN-PORT: the depot_tools dependency ships as an archive (no .git);
+    // update_depot_tools.bat hard-errors on that, so pin the snapshot.
+    if (builtin.os.tag == .windows) {
+        gclient_sync.setEnvironmentVariable("DEPOT_TOOLS_UPDATE", "0");
+    }
     addDepotToolsToPath(gclient_sync, depot_tools_dir);
     gclient_sync.step.dependOn(gclient_args_step);
 
