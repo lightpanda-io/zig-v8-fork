@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Translator = @import("translate_c").Translator;
 
 const V8_VERSION: []const u8 = "15.5.35.13";
@@ -48,8 +49,14 @@ const GnArgs = struct {
         var args: std.ArrayList(u8) = .empty;
         const gpa = b.allocator;
 
-        // Use modern siso instead of outdated ninja to speed up the build.
-        try args.appendSlice(gpa, "use_siso=true\n");
+        if (builtin.os.tag == .windows) {
+            // autoninja on Windows wraps ninja directly;
+            // siso is not used there.
+            try args.appendSlice(gpa, "use_siso=false\n");
+        } else {
+            // Use modern siso instead of outdated ninja to speed up the build.
+            try args.appendSlice(gpa, "use_siso=true\n");
+        }
 
         // official builds depend on pgo
         try args.appendSlice(gpa, "is_official_build=false\n");
@@ -285,7 +292,10 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
 
     if (!needs_full_bootstrap) {
         std.debug.print("Using cached depot_tools bootstrap from {s}\n", .{depot_tools_dir});
-        const noop = b.addSystemCommand(&.{"true"});
+        const noop = b.addSystemCommand(if (builtin.os.tag == .windows)
+            &.{ "cmd", "/c", "exit", "0" }
+        else
+            &.{"true"});
         return &noop.step;
     }
 
@@ -403,7 +413,10 @@ fn bootstrapV8(
         } else {
             // Cached V8 is still valid.
             std.debug.print("Using cached V8 bootstrap from {s}\n", .{v8_dir});
-            const noop = b.addSystemCommand(&.{"true"});
+            const noop = b.addSystemCommand(if (builtin.os.tag == .windows)
+                &.{ "cmd", "/c", "exit", "0" }
+            else
+                &.{"true"});
             return .{ .step = &noop.step, .needs_build = false };
         }
     }
@@ -506,7 +519,7 @@ fn buildV8(
         args_hash = args_hash *% 33 +% c;
     }
     const out_dir = b.fmt("out/{s}/{s}_{x}", .{ @tagName(target.result.os.tag), if (gn_args.is_debug) "debug" else "release", args_hash });
-    const libc_v8_path = b.fmt("{s}/obj/zig/libc_v8.a", .{out_dir});
+    const libc_v8_path = if (builtin.os.tag == .windows) b.fmt("{s}/obj/zig/c_v8.lib", .{out_dir}) else b.fmt("{s}/obj/zig/libc_v8.a", .{out_dir}); // WIN-PORT PATCH: msvc static lib naming
     const full_libc_v8_lazy_path = v8_dir_lazy_path.path(b, libc_v8_path);
 
     // Bootstrap marker is shared across profiles, so compare staged sources
@@ -535,7 +548,7 @@ fn buildV8(
 
     if (needs_build) {
         const gn_run = b.addSystemCommand(&.{
-            getDepotToolExePath(b, depot_tools_dir, "gn"),
+            getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "gn.exe" else "gn"),
             "--root=.",
             "--root-target=//zig",
             "--dotfile=zig/.gn",
@@ -548,7 +561,7 @@ fn buildV8(
         gn_run.step.dependOn(bootstrapped_v8.step);
 
         const ninja_run = b.addSystemCommand(&.{
-            getDepotToolExePath(b, depot_tools_dir, "autoninja"),
+            getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "ninja.exe" else "autoninja"),
             "-C",
             out_dir,
             "c_v8",
