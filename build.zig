@@ -420,7 +420,10 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
 
     const ensure_bootstrap = b.addSystemCommand(if (builtin.os.tag == .windows)
         &.{
-            getDepotToolExePath(b, depot_tools_dir, "python-bin/python3.bat"),
+            // python-bin/python3.bat requires the bootstrapped state
+            // (python3_bin_reldir.txt) which does not exist on a fresh
+            // tree; the POSIX ensure_bootstrap script runs under any sh.
+            "sh",
             "ensure_bootstrap",
         }
     else
