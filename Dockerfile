@@ -1,5 +1,5 @@
 # This dockerfile is used to build v8.
-ARG ZIG_DOCKER_VERSION=0.15.2
+ARG ZIG_DOCKER_VERSION=0.17.0
 FROM ghcr.io/lightpanda-io/zig:${ZIG_DOCKER_VERSION} as build
 
 ARG OS=linux
@@ -15,7 +15,7 @@ WORKDIR /src
 
 RUN zig build
 RUN zig build prepare-v8
-RUN zig build -Doptimize=ReleaseSafe build-v8
+RUN zig build -Doptimize=safe build-v8
 
 RUN mv v8/out/linux/release/obj/zig/libc_v8.a /src/libc_v8.a
 

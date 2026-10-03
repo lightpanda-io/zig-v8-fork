@@ -5,7 +5,7 @@ Builds V8 from official source and provides C bindings and a Zig API. This would
 V8 is the JS/WASM runtime that powers Google Chrome and Microsoft Edge.
 
 ## System Requirements
-- Zig compiler (0.15.2). Clone and build https://github.com/ziglang/zig.
+- Zig compiler (0.17.0). Clone and build https://github.com/ziglang/zig.
 - Python 3 (2.7 seems to work as well)
 - unzip (`apt install unzip`)
 - rsync (`apt install rsync`)
@@ -25,4 +25,4 @@ zig build build-v8
 
 Once complete, you can find v8 in: `v8/out/LINUX_OR_MAC/debug/obj/zig/libc_v8.a`
 
-If you build with `zig build -Doptimize=ReleaseFast build-v8`, v8 will be in `v8/out/LINUX_OR_MAC/release/obj/zig/libc_v8.a`.
+If you build with `zig build -Doptimize=fast build-v8`, v8 will be in `v8/out/LINUX_OR_MAC/release/obj/zig/libc_v8.a`.
