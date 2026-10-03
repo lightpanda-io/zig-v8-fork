@@ -512,7 +512,11 @@ fn bootstrapV8(
                     &.{"cp"});
                 cp.addFileArg2(b.path(f.src), .{});
                 cp.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
-                if (i > 0) cp.step.dependOn(prev_step);
+                // Chain the first staged copy on the depot_tools
+                // bootstrap so gn/ninja never spawn before depot_tools
+                // has been copied into place (the full-bootstrap path
+                // already orders via mkdir's dependOn).
+                if (i > 0) cp.step.dependOn(prev_step) else cp.step.dependOn(bootstrapped_depot_tools);
                 prev_step = &cp.step;
             }
 
