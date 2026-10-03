@@ -1,4 +1,5 @@
 const std = @import("std");
+const Translator = @import("translate_c").Translator;
 
 const V8_VERSION: []const u8 = "15.5.35.13";
 
@@ -15,12 +16,22 @@ const staged_files = [_]StagedFile{
     .{ .src = "build-tools/.gn", .dest = "zig/.gn" },
 };
 
+fn pathFromRoot(b: *std.Build, sub_path: []const u8) []const u8 {
+    return b.root.joinString(b.allocator, sub_path) catch @panic("OOM");
+}
+
 fn getDepotToolExePath(b: *std.Build, depot_tools_dir: []const u8, executable: []const u8) []const u8 {
     return b.fmt("{s}/{s}", .{ depot_tools_dir, executable });
 }
 
 fn addDepotToolsToPath(step: *std.Build.Step.Run, depot_tools_dir: []const u8) void {
-    step.addPathDir(depot_tools_dir);
+    const b = step.step.owner;
+    const env_map = step.getEnvMap();
+    const path = if (env_map.get("PATH")) |prev|
+        b.fmt("{s}{c}{s}", .{ depot_tools_dir, std.fs.path.delimiter, prev })
+    else
+        depot_tools_dir;
+    step.setEnvironmentVariable("PATH", path);
 }
 
 const GnArgs = struct {
@@ -87,8 +98,8 @@ pub fn build(b: *std.Build) !void {
     const shared_v8 = b.option(bool, "shared_v8", "Link V8 as a shared library") orelse false;
 
     const gn_args = GnArgs{
-        .is_debug = optimize == .Debug,
-        .symbol_level = b.option(u8, "symbol_level", "Symbol level") orelse if (optimize == .Debug) 1 else 0,
+        .is_debug = optimize == .debug,
+        .symbol_level = b.option(u8, "symbol_level", "Symbol level") orelse if (optimize == .debug) 1 else 0,
         .is_asan = b.option(bool, "is_asan", "Address sanitizer") orelse false,
         .is_tsan = b.option(bool, "is_tsan", "Thread sanitizer") orelse false,
         .v8_enable_sandbox = b.option(bool, "v8_enable_sandbox", "V8 lightable sandbox") orelse false,
@@ -101,10 +112,7 @@ pub fn build(b: *std.Build) !void {
         b.option(bool, "inspector_subtype", "Export default valueSubtype and descriptionForValueSubtype") orelse true,
     );
 
-    const cache_root = b.option([]const u8, "cache_root", "Root directory for the V8 and depot_tools cache") orelse b.pathFromRoot(".lp-cache");
-    std.Io.Dir.cwd().access(io, cache_root, .{}) catch {
-        try std.Io.Dir.cwd().createDirPath(io, cache_root);
-    };
+    const cache_root = b.option([]const u8, "cache_root", "Root directory for the V8 and depot_tools cache") orelse pathFromRoot(b, ".lp-cache");
 
     const prebuilt_v8_path = b.option(LazyPath, "prebuilt_v8_path", "Path to a prebuilt libc_v8.a or libc_v8.so; may be a generated file");
 
@@ -114,6 +122,7 @@ pub fn build(b: *std.Build) !void {
     const built_v8 = if (prebuilt_v8_path) |lazy| blk: {
         const name: []const u8 = switch (lazy) {
             .cwd_relative => |p| std.fs.path.basename(p),
+            .relative => |r| std.fs.path.basename(r.sub_path),
             .src_path => |sp| std.fs.path.basename(sp.sub_path),
             .dependency => |d| std.fs.path.basename(d.sub_path),
             .generated => "(generated archive)",
@@ -131,7 +140,11 @@ pub fn build(b: *std.Build) !void {
         if (is_shared_lib) {
             const raw_path = switch (lazy) {
                 .cwd_relative => |p| p,
-                .src_path => |sp| sp.owner.pathFromRoot(sp.sub_path),
+                .relative => |r| if (r.base == .cwd) r.sub_path else {
+                    std.debug.print("prebuilt_v8_path: a shared V8 must be a plain path\n", .{});
+                    return error.PrebuiltV8NotShared;
+                },
+                .src_path => |sp| pathFromRoot(sp.owner, sp.sub_path),
                 .dependency, .generated => {
                     std.debug.print("prebuilt_v8_path: a shared V8 must be a plain path\n", .{});
                     return error.PrebuiltV8NotShared;
@@ -141,7 +154,10 @@ pub fn build(b: *std.Build) !void {
                 std.debug.print("prebuilt_v8_path: cannot resolve {s}: {t}\n", .{ raw_path, err });
                 return err;
             };
-            libc_v8_path = .{ .cwd_relative = path };
+            // The resolved path is baked into the configuration; re-run
+            // configure if the library is replaced.
+            b.dependOnFileMetadata(lazy);
+            libc_v8_path = b.graph.cwdRelativePath(path);
         }
         break :blk BuiltV8{
             .step = b.step("prebuilt_v8", "Use prebuilt v8"),
@@ -149,6 +165,15 @@ pub fn build(b: *std.Build) !void {
             .shared_dir = if (is_shared_lib) libc_v8_path.dirname() else null,
         };
     } else blk: {
+        // Building from source decides what to do by inspecting the V8 checkout
+        // (marker files, mtimes) at configure time, which the configuration
+        // cache cannot track.
+        b.graph.poisonCache();
+
+        std.Io.Dir.cwd().access(io, cache_root, .{}) catch {
+            try std.Io.Dir.cwd().createDirPath(io, cache_root);
+        };
+
         const bootstrapped_depot_tools = try bootstrapDepotTools(b, depot_tools_dir);
         const bootstrapped_v8 = try bootstrapV8(b, bootstrapped_depot_tools, v8_dir, depot_tools_dir);
 
@@ -168,12 +193,12 @@ pub fn build(b: *std.Build) !void {
 
     b.getInstallStep().dependOn(build_step);
 
-    const binding = b.addTranslateC(.{
-        .root_source_file = b.path("src/binding.h"),
+    const binding: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = b.path("src/binding.h"),
         .target = target,
         .optimize = optimize,
     });
-    const binding_module = binding.createModule();
+    const binding_module = binding.mod;
 
     // the module we export as a library
     const v8_module = b.addModule("v8", .{
@@ -190,7 +215,7 @@ pub fn build(b: *std.Build) !void {
 
     switch (target.result.os.tag) {
         .macos => {
-            v8_module.addSystemFrameworkPath(.{ .cwd_relative = "/System/Library/Frameworks" });
+            v8_module.addSystemFrameworkPath(b.graph.cwdRelativePath("/System/Library/Frameworks"));
             v8_module.linkFramework("CoreFoundation", .{});
             v8_module.linkFramework("Security", .{});
         },
@@ -218,7 +243,7 @@ pub fn build(b: *std.Build) !void {
         switch (target.result.os.tag) {
             .macos => {
                 // v8 has a dependency, abseil-cpp, which, on Mac, uses CoreFoundation
-                test_module.addSystemFrameworkPath(.{ .cwd_relative = "/System/Library/Frameworks" });
+                test_module.addSystemFrameworkPath(b.graph.cwdRelativePath("/System/Library/Frameworks"));
                 test_module.linkFramework("CoreFoundation", .{});
             },
             else => {},
@@ -264,7 +289,7 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
     std.debug.print("Bootstrapping depot_tools {s} in {s} (this will take a while)...\n", .{ V8_VERSION, depot_tools_dir });
 
     const copy_depot_tools = b.addSystemCommand(&.{ "cp", "-r" });
-    copy_depot_tools.addDirectoryArg(depot_tools.path(""));
+    copy_depot_tools.addDirectoryArg2(depot_tools.path(""), .{});
     copy_depot_tools.addArg(depot_tools_dir);
 
     const build_telemetry_config_content =
@@ -286,7 +311,7 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
     const ensure_bootstrap = b.addSystemCommand(&.{
         getDepotToolExePath(b, depot_tools_dir, "ensure_bootstrap"),
     });
-    ensure_bootstrap.setCwd(.{ .cwd_relative = depot_tools_dir });
+    ensure_bootstrap.setCwd(b.graph.cwdRelativePath(depot_tools_dir));
     addDepotToolsToPath(ensure_bootstrap, depot_tools_dir);
     ensure_bootstrap.step.dependOn(&write_telemetry_config.step);
 
@@ -317,7 +342,7 @@ fn bootstrapV8(
             const marker_mtime = marker_stat.mtime;
 
             // Check if build.zig itself changed
-            if (std.Io.Dir.cwd().statFile(io, b.pathFromRoot("build.zig"), .{})) |stat| {
+            if (std.Io.Dir.cwd().statFile(io, pathFromRoot(b, "build.zig"), .{})) |stat| {
                 if (stat.mtime.nanoseconds > marker_mtime.nanoseconds) {
                     std.debug.print("Source file build.zig changed, updating bootstrap\n", .{});
                     break :blk true;
@@ -325,8 +350,8 @@ fn bootstrapV8(
             } else |_| {}
 
             const source_dirs = [_][]const u8{
-                b.pathFromRoot("src"),
-                b.pathFromRoot("build-tools"),
+                pathFromRoot(b, "src"),
+                pathFromRoot(b, "build-tools"),
             };
 
             for (source_dirs) |dir_path| {
@@ -362,7 +387,7 @@ fn bootstrapV8(
             var prev_step: *std.Build.Step = undefined;
             for (staged_files, 0..) |f, i| {
                 const cp = b.addSystemCommand(&.{"cp"});
-                cp.addFileArg(b.path(f.src));
+                cp.addFileArg2(b.path(f.src), .{});
                 cp.addArg(b.fmt("{s}/{s}", .{ v8_dir, f.dest }));
                 if (i > 0) cp.step.dependOn(prev_step);
                 prev_step = &cp.step;
@@ -412,7 +437,7 @@ fn bootstrapV8(
             prev_stage_step = &mkdir_parent.step;
         }
         const cp = b.addSystemCommand(&.{"cp"});
-        cp.addFileArg(b.path(f.src));
+        cp.addFileArg2(b.path(f.src), .{});
         cp.addArg(b.fmt("{s}/{s}", .{ v8_dir, f.dest }));
         cp.step.dependOn(prev_stage_step);
         prev_stage_step = &cp.step;
@@ -431,7 +456,7 @@ fn bootstrapV8(
         getDepotToolExePath(b, depot_tools_dir, "gclient"),
         "sync",
     });
-    gclient_sync.setCwd(.{ .cwd_relative = v8_dir });
+    gclient_sync.setCwd(b.graph.cwdRelativePath(v8_dir));
     addDepotToolsToPath(gclient_sync, depot_tools_dir);
     gclient_sync.step.dependOn(&write_gclient_args.step);
 
@@ -440,7 +465,7 @@ fn bootstrapV8(
         getDepotToolExePath(b, depot_tools_dir, "python-bin/python3"),
         "tools/clang/scripts/update.py",
     });
-    clang_update.setCwd(.{ .cwd_relative = v8_dir });
+    clang_update.setCwd(b.graph.cwdRelativePath(v8_dir));
     addDepotToolsToPath(clang_update, depot_tools_dir);
     clang_update.step.dependOn(&gclient_sync.step);
 
@@ -468,7 +493,7 @@ fn buildV8(
     shared_v8: bool,
 ) !BuiltV8 {
     const io = b.graph.io;
-    const v8_dir_lazy_path: LazyPath = .{ .cwd_relative = v8_dir };
+    const v8_dir_lazy_path = b.graph.cwdRelativePath(v8_dir);
 
     const args_string = try gn_args.asString(b, target);
     // Simple string hashing (djb2 by Dan Bernstein) to ensure unique output directories for different GN args.
@@ -547,7 +572,7 @@ fn buildV8(
             "-o",
             libc_v8_so_path,
             "-Wl,-soname,libc_v8.so",
-            b.fmt("-Wl,--version-script={s}", .{b.pathFromRoot("build-tools/v8_exports.map")}),
+            b.fmt("-Wl,--version-script={s}", .{pathFromRoot(b, "build-tools/v8_exports.map")}),
             "-Wl,--whole-archive",
             libc_v8_path,
             "-Wl,--no-whole-archive",
