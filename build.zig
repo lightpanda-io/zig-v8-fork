@@ -60,15 +60,35 @@ fn setEnvDefault(step: *std.Build.Step.Run, key: []const u8, default_value: []co
     }
 }
 
-/// `cmd /c copy` mis-parses forward slashes in its destination (it
-/// reads them as switch separators), which either fails the copy or
-/// silently writes to the wrong path. Rewrite paths to native
-/// separators before handing them to the copy command.
-fn nativeSepPath(b: *std.Build, path: []const u8) []const u8 {
+/// The `cmd` builtins used by the bootstrap steps (copy, xcopy,
+/// mkdir, ...) parse their arguments: a `/` is read as a switch
+/// separator (xcopy exits 4 on a destination like
+/// `C:\cache/depot_tools`), and doubled backslashes upset some
+/// versions. Normalize every path handed to them: forward slashes
+/// become backslashes and doubled backslashes collapse, keeping a
+/// leading pair so UNC paths stay intact.
+fn cmdPath(b: *std.Build, path: []const u8) []const u8 {
     if (builtin.os.tag != .windows) return path;
     const buf = b.allocator.alloc(u8, path.len) catch @panic("OOM");
-    for (path, 0..) |c, i| buf[i] = if (c == '/') '\\' else c;
-    return buf;
+    var out: usize = 0;
+    var i: usize = 0;
+    while (i < path.len) : (i += 1) {
+        const c = path[i];
+        if (c == '/') {
+            buf[out] = '\\';
+            out += 1;
+        } else if (c == '\\') {
+            buf[out] = '\\';
+            out += 1;
+            // Collapse doubled backslashes, but keep a leading pair
+            // so UNC paths (\\server\share) stay intact.
+            if (out > 1 and i + 1 < path.len and path[i + 1] == '\\') i += 1;
+        } else {
+            buf[out] = c;
+            out += 1;
+        }
+    }
+    return buf[0..out];
 }
 /// GN's `exec_script` invokes `python3.exe` looked up through PATH.
 /// The only `python3.exe` normally reachable on Windows is the
@@ -364,7 +384,7 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
     else
         &.{ "cp", "-r" });
     copy_depot_tools.addDirectoryArg2(depot_tools.path(""), .{});
-    copy_depot_tools.addArg(depot_tools_dir);
+    copy_depot_tools.addArg(cmdPath(b, depot_tools_dir));
 
     const build_telemetry_config_content =
         \\ {
@@ -384,7 +404,7 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
             );
             const copy_telemetry_config = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
             copy_telemetry_config.addFileArg(telemetry_config_file);
-            copy_telemetry_config.addArg(nativeSepPath(b, b.fmt("{s}/build_telemetry.cfg", .{depot_tools_dir})));
+            copy_telemetry_config.addArg(cmdPath(b, b.fmt("{s}/build_telemetry.cfg", .{depot_tools_dir})));
             copy_telemetry_config.step.dependOn(&copy_depot_tools.step);
             break :blk &copy_telemetry_config.step;
         } else {
@@ -415,7 +435,7 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
         &.{ "cmd", "/c", "type", "nul", ">" }
     else
         &.{"touch"});
-    create_marker.addArg(nativeSepPath(b, marker_file));
+    create_marker.addArg(cmdPath(b, marker_file));
     create_marker.step.dependOn(&ensure_bootstrap.step);
 
     return &create_marker.step;
@@ -491,7 +511,7 @@ fn bootstrapV8(
                 else
                     &.{"cp"});
                 cp.addFileArg2(b.path(f.src), .{});
-                cp.addArg(nativeSepPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
+                cp.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
                 if (i > 0) cp.step.dependOn(prev_step);
                 prev_step = &cp.step;
             }
@@ -500,7 +520,7 @@ fn bootstrapV8(
                 &.{ "cmd", "/c", "type", "nul", ">" }
             else
                 &.{"touch"});
-            update_marker.addArg(nativeSepPath(b, marker_file));
+            update_marker.addArg(cmdPath(b, marker_file));
             update_marker.step.dependOn(prev_step);
 
             return .{ .step = &update_marker.step, .needs_build = true };
@@ -522,7 +542,7 @@ fn bootstrapV8(
         &.{ "cmd", "/c", "mkdir" }
     else
         &.{ "mkdir", "-p" });
-    mkdir.addArg(v8_dir);
+    mkdir.addArg(cmdPath(b, v8_dir));
     mkdir.step.dependOn(bootstrapped_depot_tools);
 
     // Write .gclient file
@@ -545,7 +565,7 @@ fn bootstrapV8(
             const gclient_config_file = write_gclient.add("gclient", gclient_content);
             const copy_gclient = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
             copy_gclient.addFileArg(gclient_config_file);
-            copy_gclient.addArg(nativeSepPath(b, b.fmt("{s}/.gclient", .{v8_dir})));
+            copy_gclient.addArg(cmdPath(b, b.fmt("{s}/.gclient", .{v8_dir})));
             copy_gclient.step.dependOn(&mkdir.step);
             break :blk &copy_gclient.step;
         } else {
@@ -563,7 +583,7 @@ fn bootstrapV8(
                 &.{ "cmd", "/c", "mkdir" }
             else
                 &.{ "mkdir", "-p" });
-            mkdir_parent.addArg(b.fmt("{s}/{s}", .{ v8_dir, parent }));
+            mkdir_parent.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, parent })));
             mkdir_parent.step.dependOn(prev_stage_step);
             prev_stage_step = &mkdir_parent.step;
         }
@@ -572,7 +592,7 @@ fn bootstrapV8(
         else
             &.{"cp"});
         cp.addFileArg2(b.path(f.src), .{});
-        cp.addArg(nativeSepPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
+        cp.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
         cp.step.dependOn(prev_stage_step);
         prev_stage_step = &cp.step;
     }
@@ -582,7 +602,7 @@ fn bootstrapV8(
         &.{ "cmd", "/c", "mkdir" }
     else
         &.{ "mkdir", "-p" });
-    mkdir_build_config.addArg(b.fmt("{s}/build/config", .{v8_dir}));
+    mkdir_build_config.addArg(cmdPath(b, b.fmt("{s}/build/config", .{v8_dir})));
     mkdir_build_config.step.dependOn(prev_stage_step);
 
     const gclient_args_step: *std.Build.Step = blk: {
@@ -594,7 +614,7 @@ fn bootstrapV8(
             );
             const copy_gclient_args = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
             copy_gclient_args.addFileArg(gclient_args_file);
-            copy_gclient_args.addArg(nativeSepPath(b, b.fmt("{s}/build/config/gclient_args.gni", .{v8_dir})));
+            copy_gclient_args.addArg(cmdPath(b, b.fmt("{s}/build/config/gclient_args.gni", .{v8_dir})));
             copy_gclient_args.step.dependOn(&mkdir_build_config.step);
             break :blk &copy_gclient_args.step;
         } else {
@@ -628,7 +648,7 @@ fn bootstrapV8(
         &.{ "cmd", "/c", "type", "nul", ">" }
     else
         &.{"touch"});
-    create_marker.addArg(nativeSepPath(b, marker_file));
+    create_marker.addArg(cmdPath(b, marker_file));
     create_marker.step.dependOn(&clang_update.step);
 
     return .{ .step = &create_marker.step, .needs_build = true };
