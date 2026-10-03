@@ -197,6 +197,9 @@ pub fn build(b: *std.Build) !void {
         .c_source_file = b.path("src/binding.h"),
         .target = target,
         .optimize = optimize,
+        // Zig 0.16's built-in translate-c defaulted to this; callers rely on
+        // zero-initialized fields when filling V8 config structs.
+        .default_init = true,
     });
     const binding_module = binding.mod;
 
