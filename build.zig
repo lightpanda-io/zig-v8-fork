@@ -90,6 +90,19 @@ fn cmdPath(b: *std.Build, path: []const u8) []const u8 {
     }
     return buf[0..out];
 }
+/// `cmd /c mkdir` exits 1 when the target already exists (unlike
+/// `mkdir -p`), which breaks retries after a partial bootstrap and
+/// staged files sharing a parent directory (e.g. zig/BUILD.gn and
+/// zig/.gn). The Windows mkdir steps therefore start with
+/// `cmd /c if not exist` and this appends the path, `mkdir` and
+/// the path again, making them idempotent.
+fn addIdempotentMkdirArg(step: *std.Build.Step.Run, path: []const u8) void {
+    step.addArg(path);
+    if (builtin.os.tag == .windows) {
+        step.addArg("mkdir");
+        step.addArg(path);
+    }
+}
 /// GN's `exec_script` invokes `python3.exe` looked up through PATH.
 /// The only `python3.exe` normally reachable on Windows is the
 /// Microsoft Store stub (exits 9009), so locate the interpreter that
@@ -546,10 +559,10 @@ fn bootstrapV8(
 
     // Create cache directory
     const mkdir = b.addSystemCommand(if (builtin.os.tag == .windows)
-        &.{ "cmd", "/c", "mkdir" }
+        &.{ "cmd", "/c", "if", "not", "exist" }
     else
         &.{ "mkdir", "-p" });
-    mkdir.addArg(cmdPath(b, v8_dir));
+    addIdempotentMkdirArg(mkdir, cmdPath(b, v8_dir));
     mkdir.step.dependOn(bootstrapped_depot_tools);
 
     // Write .gclient file
@@ -587,10 +600,10 @@ fn bootstrapV8(
     for (staged_files) |f| {
         if (std.fs.path.dirname(f.dest)) |parent| {
             const mkdir_parent = b.addSystemCommand(if (builtin.os.tag == .windows)
-                &.{ "cmd", "/c", "mkdir" }
+                &.{ "cmd", "/c", "if", "not", "exist" }
             else
                 &.{ "mkdir", "-p" });
-            mkdir_parent.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, parent })));
+            addIdempotentMkdirArg(mkdir_parent, cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, parent })));
             mkdir_parent.step.dependOn(prev_stage_step);
             prev_stage_step = &mkdir_parent.step;
         }
@@ -606,10 +619,10 @@ fn bootstrapV8(
 
     // Create gclient_args.gni
     const mkdir_build_config = b.addSystemCommand(if (builtin.os.tag == .windows)
-        &.{ "cmd", "/c", "mkdir" }
+        &.{ "cmd", "/c", "if", "not", "exist" }
     else
         &.{ "mkdir", "-p" });
-    mkdir_build_config.addArg(cmdPath(b, b.fmt("{s}/build/config", .{v8_dir})));
+    addIdempotentMkdirArg(mkdir_build_config, cmdPath(b, b.fmt("{s}/build/config", .{v8_dir})));
     mkdir_build_config.step.dependOn(prev_stage_step);
 
     const gclient_args_step: *std.Build.Step = blk: {
