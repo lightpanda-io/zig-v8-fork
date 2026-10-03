@@ -1,5 +1,6 @@
 // Based on https://github.com/denoland/rusty_v8/blob/main/src/binding.cc
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <memory>
@@ -702,8 +703,29 @@ size_t v8__HeapStatistics__SIZEOF() {
 
 // ArrayBuffer
 
-v8::ArrayBuffer::Allocator* v8__ArrayBuffer__Allocator__NewDefaultAllocator() {
-    return v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+// Without the sandbox, V8 accepts lengths up to 2^53 and an overcommitted
+// calloc hands them out; reporting 32GB+ as external memory then trips a
+// CHECK and aborts the process. Past the cap, V8 throws a RangeError instead.
+class CappedArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+public:
+    explicit CappedArrayBufferAllocator(size_t max_allocation_size)
+        : inner_(v8::ArrayBuffer::Allocator::NewDefaultAllocator()),
+          max_allocation_size_(std::min(max_allocation_size, v8::ArrayBuffer::kMaxByteLength)) {}
+    ~CappedArrayBufferAllocator() override { delete inner_; }
+
+    void* Allocate(size_t length) override { return inner_->Allocate(length); }
+    void* AllocateUninitialized(size_t length) override { return inner_->AllocateUninitialized(length); }
+    void Free(void* data, size_t length) override { inner_->Free(data, length); }
+    size_t MaxAllocationSize() const override { return max_allocation_size_; }
+    v8::PageAllocator* GetPageAllocator() override { return inner_->GetPageAllocator(); }
+
+private:
+    v8::ArrayBuffer::Allocator* inner_;
+    const size_t max_allocation_size_;
+};
+
+v8::ArrayBuffer::Allocator* v8__ArrayBuffer__Allocator__NewDefaultAllocator(size_t max_allocation_size) {
+    return new CappedArrayBufferAllocator(max_allocation_size);
 }
 
 void v8__ArrayBuffer__Allocator__DELETE(v8::ArrayBuffer::Allocator* self) { delete self; }
