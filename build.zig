@@ -734,6 +734,22 @@ fn buildV8(
     var last_step: *std.Build.Step = undefined;
 
     if (needs_build) {
+        // WIN-PORT: adapt the freshly synced V8 tree to the local
+        // Windows toolchain (SDK 10.0.26100.0, dynamic CRT, no CFG
+        // guards) before GN generates the build. Both bootstrap
+        // paths (full gclient sync and the staged-files update)
+        // funnel through bootstrapped_v8.step, so the patch runs
+        // after the tree is in place on either path.
+        const v8_tree_compat = b.addSystemCommand(if (builtin.os.tag == .windows)
+            &.{"python3"}
+        else
+            &.{"true"});
+        if (builtin.os.tag == .windows) {
+            v8_tree_compat.addFileArg(b.path("build-tools/windows-v8-compat.py"));
+            v8_tree_compat.addArg(v8_dir);
+        }
+        v8_tree_compat.step.dependOn(bootstrapped_v8.step);
+
         const gn_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "gn.exe" else "gn"),
             "--root=.",
@@ -745,7 +761,7 @@ fn buildV8(
         });
         gn_run.setCwd(v8_dir_lazy_path);
         addDepotToolsToPath(gn_run, depot_tools_dir);
-        gn_run.step.dependOn(bootstrapped_v8.step);
+        gn_run.step.dependOn(&v8_tree_compat.step);
 
         const ninja_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "ninja.exe" else "autoninja"),
