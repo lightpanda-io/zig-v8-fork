@@ -402,7 +402,7 @@ const Data* v8__FixedArray__Get(
 typedef void (*PromiseRejectCallback)(PromiseRejectMessage);
 typedef void (*BackingStoreDeleterCallback)(void* data, size_t len, void* deleter_data);
 typedef struct BackingStore BackingStore;
-ArrayBufferAllocator* v8__ArrayBuffer__Allocator__NewDefaultAllocator();
+ArrayBufferAllocator* v8__ArrayBuffer__Allocator__NewDefaultAllocator(size_t max_allocation_size);
 void v8__ArrayBuffer__Allocator__DELETE(ArrayBufferAllocator* self);
 BackingStore* v8__ArrayBuffer__NewBackingStore(
     Isolate* isolate,
