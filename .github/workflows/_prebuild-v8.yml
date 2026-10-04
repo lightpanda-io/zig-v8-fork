@@ -73,9 +73,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.build_type }}" = "debug" ]; then
-            zig build -Dtarget="${{ inputs.target }}" -Doptimize=Debug -Dis_tsan=true -Dv8_enable_sandbox=true build-v8
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=debug -Dis_tsan=true -Dv8_enable_sandbox=true build-v8
           else
-            zig build -Dtarget="${{ inputs.target }}" -Doptimize=ReleaseSafe build-v8
+            zig build -Dtarget="${{ inputs.target }}" -Doptimize=safe build-v8
           fi
 
       # zig's self-hosted linker doesn't work when we statically link V8. I'm
