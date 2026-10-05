@@ -575,7 +575,11 @@ fn buildV8(
             "-o",
             libc_v8_so_path,
             "-Wl,-soname,libc_v8.so",
-            b.fmt("-Wl,--version-script={s}", .{pathFromRoot(b, "build-tools/v8_exports.map")}),
+        });
+        // A LazyPath, not pathFromRoot: a dependency's root is cwd-relative
+        // (zig-pkg/...), which doesn't resolve from the v8_dir cwd.
+        link_shared.addPrefixedFileArg("-Wl,--version-script=", b.path("build-tools/v8_exports.map"));
+        link_shared.addArgs(&.{
             "-Wl,--whole-archive",
             libc_v8_path,
             "-Wl,--no-whole-archive",
