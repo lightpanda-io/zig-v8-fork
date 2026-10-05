@@ -16,6 +16,7 @@
 #include "src/inspector/protocol/Runtime.h"
 #include "src/inspector/v8-string-conversions.h"
 #include "src/debug/debug-interface.h"
+#include "third_party/simdutf/simdutf.h"
 
 #include "inspector.h"
 #include "unicode/locid.h"
@@ -3567,6 +3568,125 @@ bool v8__ValueDeserializer__ReadDouble(ValueDeserializerWrapper* self, double* o
 
 bool v8__ValueDeserializer__ReadRawBytes(ValueDeserializerWrapper* self, size_t length, const void** out) {
     return self->deserializer.ReadRawBytes(length, out);
+}
+
+// simdutf
+// -------
+//
+// Subset of simdutf's C API: types from include/simdutf_c.h, functions copied
+// from src/simdutf_c.cpp (simdutf@dc3f7a8f), in the same order. V8 bundles
+// simdutf 7.3.3, which predates that file, so only functions available in
+// 7.3.3 are wrapped.
+
+/* C-friendly subset of simdutf errors */
+typedef enum simdutf_error_code {
+  SIMDUTF_ERROR_SUCCESS = 0,
+  SIMDUTF_ERROR_HEADER_BITS,
+  SIMDUTF_ERROR_TOO_SHORT,
+  SIMDUTF_ERROR_TOO_LONG,
+  SIMDUTF_ERROR_OVERLONG,
+  SIMDUTF_ERROR_TOO_LARGE,
+  SIMDUTF_ERROR_SURROGATE,
+  SIMDUTF_ERROR_INVALID_BASE64_CHARACTER,
+  SIMDUTF_ERROR_BASE64_INPUT_REMAINDER,
+  SIMDUTF_ERROR_BASE64_EXTRA_BITS,
+  SIMDUTF_ERROR_OUTPUT_BUFFER_TOO_SMALL,
+  SIMDUTF_ERROR_OTHER
+} simdutf_error_code;
+
+typedef struct simdutf_result {
+  simdutf_error_code error;
+  size_t count; /* position of error or number of code units validated */
+} simdutf_result;
+
+static simdutf_result to_c_result(const simdutf::result &r) {
+  simdutf_result out;
+  out.error = static_cast<simdutf_error_code>(r.error);
+  out.count = r.count;
+  return out;
+}
+
+bool v8__simdutf_validate_utf8(const char *buf, size_t len) {
+  return simdutf::validate_utf8(buf, len);
+}
+
+bool v8__simdutf_validate_ascii(const char *buf, size_t len) {
+  return simdutf::validate_ascii(buf, len);
+}
+simdutf_result v8__simdutf_validate_ascii_with_errors(const char *buf, size_t len) {
+  return to_c_result(simdutf::validate_ascii_with_errors(buf, len));
+}
+
+size_t v8__simdutf_count_utf8(const char *input, size_t length) {
+  return simdutf::count_utf8(input, length);
+}
+
+size_t v8__simdutf_utf8_length_from_latin1(const char *input, size_t length) {
+  return simdutf::utf8_length_from_latin1(input, length);
+}
+size_t v8__simdutf_utf16_length_from_utf8(const char *input, size_t length) {
+  return simdutf::utf16_length_from_utf8(input, length);
+}
+
+/* Conversions: latin1 <-> utf8, utf8 <-> utf16/utf32, utf16 <-> utf8, etc. */
+size_t v8__simdutf_convert_latin1_to_utf8(const char *input, size_t length,
+                                           char *output) {
+  return simdutf::convert_latin1_to_utf8(input, length, output);
+}
+
+/* --- Base64 enums and helpers --- */
+typedef enum simdutf_base64_options {
+  SIMDUTF_BASE64_DEFAULT = 0,
+  SIMDUTF_BASE64_URL = 1,
+  SIMDUTF_BASE64_DEFAULT_NO_PADDING = 2,
+  SIMDUTF_BASE64_URL_WITH_PADDING = 3,
+  SIMDUTF_BASE64_DEFAULT_ACCEPT_GARBAGE = 4,
+  SIMDUTF_BASE64_URL_ACCEPT_GARBAGE = 5,
+  SIMDUTF_BASE64_DEFAULT_OR_URL = 8,
+  SIMDUTF_BASE64_DEFAULT_OR_URL_ACCEPT_GARBAGE = 12
+} simdutf_base64_options;
+
+typedef enum simdutf_last_chunk_handling_options {
+  SIMDUTF_LAST_CHUNK_LOOSE = 0,
+  SIMDUTF_LAST_CHUNK_STRICT = 1,
+  SIMDUTF_LAST_CHUNK_STOP_BEFORE_PARTIAL = 2,
+  SIMDUTF_LAST_CHUNK_ONLY_FULL_CHUNKS = 3
+} simdutf_last_chunk_handling_options;
+
+/* --- base64 helpers --- */
+size_t v8__simdutf_maximal_binary_length_from_base64(const char *input,
+                                                      size_t length) {
+  return simdutf::maximal_binary_length_from_base64(input, length);
+}
+size_t v8__simdutf_maximal_binary_length_from_base64_utf16(const char16_t *input,
+                                                            size_t length) {
+  return simdutf::maximal_binary_length_from_base64(input, length);
+}
+
+simdutf_result v8__simdutf_base64_to_binary(
+    const char *input, size_t length, char *output,
+    simdutf_base64_options options,
+    simdutf_last_chunk_handling_options last_chunk_options) {
+  return to_c_result(simdutf::base64_to_binary(
+      input, length, output, static_cast<simdutf::base64_options>(options),
+      static_cast<simdutf::last_chunk_handling_options>(last_chunk_options)));
+}
+
+size_t v8__simdutf_base64_length_from_binary(size_t length,
+                                              simdutf_base64_options options) {
+  return simdutf::base64_length_from_binary(
+      length, static_cast<simdutf::base64_options>(options));
+}
+
+size_t v8__simdutf_binary_to_base64(const char *input, size_t length, char *output,
+                                     simdutf_base64_options options) {
+  return simdutf::binary_to_base64(
+      input, length, output, static_cast<simdutf::base64_options>(options));
+}
+
+/* Not part of simdutf's C API; wrapped the same way. */
+size_t v8__simdutf_trim_partial_utf8(const char *input, size_t length) {
+  return simdutf::trim_partial_utf8(input, length);
 }
 
 } // extern "C"
