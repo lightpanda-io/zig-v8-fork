@@ -14,6 +14,7 @@ const staged_files = [_]StagedFile{
     .{ .src = "src/inspector.h", .dest = "inspector.h" },
     .{ .src = "build-tools/BUILD.gn", .dest = "zig/BUILD.gn" },
     .{ .src = "build-tools/.gn", .dest = "zig/.gn" },
+    .{ .src = "build-tools/c_v8_rust.rs", .dest = "zig/c_v8_rust.rs" },
 };
 
 fn pathFromRoot(b: *std.Build, sub_path: []const u8) []const u8 {
