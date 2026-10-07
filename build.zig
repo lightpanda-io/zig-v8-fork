@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Translator = @import("translate_c").Translator;
 
 const V8_VERSION: []const u8 = "15.5.35.13";
@@ -26,12 +27,103 @@ fn getDepotToolExePath(b: *std.Build, depot_tools_dir: []const u8, executable: [
 
 fn addDepotToolsToPath(step: *std.Build.Step.Run, depot_tools_dir: []const u8) void {
     const b = step.step.owner;
+    // WIN-PORT: GN's `exec_script` resolves `python3.exe` through
+    // PATH and would otherwise run the WindowsApps store stub
+    // (which exits 9009). Prepend the CIPD-managed interpreter
+    // that depot_tools ships under `.cipd_bin/<version>/bin`.
+    const python_bin = if (builtin.os.tag == .windows) findCipdPythonBin(b, depot_tools_dir) else null;
+    // The V8 toolchain scripts (vs_toolchain.py) locate the MSVC
+    // toolchain through these variables. depot_tools' default CIPD
+    // toolchain download needs Google-internal access, so default
+    // to the locally installed toolchain; values already present
+    // in the environment (e.g. a Visual Studio developer prompt)
+    // win.
+    if (builtin.os.tag == .windows) {
+        setEnvDefault(step, "DEPOT_TOOLS_WIN_TOOLCHAIN", "0");
+        setEnvDefault(step, "GYP_MSVS_VERSION", "2022");
+        setEnvDefault(step, "vs2022_install", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools");
+    }
     const env_map = step.getEnvMap();
     const path = if (env_map.get("PATH")) |prev|
-        b.fmt("{s}{c}{s}", .{ depot_tools_dir, std.fs.path.delimiter, prev })
+        b.fmt("{s}{s}{c}{s}", .{ python_bin orelse "", depot_tools_dir, std.fs.path.delimiter, prev })
+    else if (python_bin) |py|
+        b.fmt("{s}{c}{s}", .{ py, std.fs.path.delimiter, depot_tools_dir })
     else
         depot_tools_dir;
     step.setEnvironmentVariable("PATH", path);
+}
+
+fn setEnvDefault(step: *std.Build.Step.Run, key: []const u8, default_value: []const u8) void {
+    const b = step.step.owner;
+    if (b.graph.environ_map.get(key) == null) {
+        step.setEnvironmentVariable(key, default_value);
+    }
+}
+
+/// The `cmd` builtins used by the bootstrap steps (copy, xcopy,
+/// mkdir, ...) parse their arguments: a `/` is read as a switch
+/// separator (xcopy exits 4 on a destination like
+/// `C:\cache/depot_tools`), and doubled backslashes upset some
+/// versions. Normalize every path handed to them: forward slashes
+/// become backslashes and doubled backslashes collapse, keeping a
+/// leading pair so UNC paths stay intact.
+fn cmdPath(b: *std.Build, path: []const u8) []const u8 {
+    if (builtin.os.tag != .windows) return path;
+    const buf = b.allocator.alloc(u8, path.len) catch @panic("OOM");
+    var out: usize = 0;
+    var i: usize = 0;
+    while (i < path.len) : (i += 1) {
+        const c = path[i];
+        if (c == '/') {
+            buf[out] = '\\';
+            out += 1;
+        } else if (c == '\\') {
+            buf[out] = '\\';
+            out += 1;
+            // Collapse doubled backslashes, but keep a leading pair
+            // so UNC paths (\\server\share) stay intact.
+            if (out > 1 and i + 1 < path.len and path[i + 1] == '\\') i += 1;
+        } else {
+            buf[out] = c;
+            out += 1;
+        }
+    }
+    return buf[0..out];
+}
+/// `cmd /c mkdir` exits 1 when the target already exists (unlike
+/// `mkdir -p`), which breaks retries after a partial bootstrap and
+/// staged files sharing a parent directory (e.g. zig/BUILD.gn and
+/// zig/.gn). The Windows mkdir steps therefore start with
+/// `cmd /c if not exist` and this appends the path, `mkdir` and
+/// the path again, making them idempotent.
+fn addIdempotentMkdirArg(step: *std.Build.Step.Run, path: []const u8) void {
+    step.addArg(path);
+    if (builtin.os.tag == .windows) {
+        step.addArg("mkdir");
+        step.addArg(path);
+    }
+}
+/// GN's `exec_script` invokes `python3.exe` looked up through PATH.
+/// The only `python3.exe` normally reachable on Windows is the
+/// Microsoft Store stub (exits 9009), so locate the interpreter that
+/// depot_tools installed under `.cipd_bin/<version>/bin` instead.
+fn findCipdPythonBin(b: *std.Build, depot_tools_dir: []const u8) ?[]const u8 {
+    const io = b.graph.io;
+    const cipd_bin = b.fmt("{s}/.cipd_bin", .{depot_tools_dir});
+    var versions = std.Io.Dir.cwd().openDir(io, cipd_bin, .{ .iterate = true }) catch return null;
+    defer versions.close(io);
+
+    var it = versions.iterate();
+    while (it.next(io) catch null) |entry| {
+        if (entry.kind != .directory) continue;
+        const bin = b.fmt("{s}/{s}/bin", .{ cipd_bin, entry.name });
+        var bin_dir = std.Io.Dir.cwd().openDir(io, bin, .{}) catch continue;
+        defer bin_dir.close(io);
+        const python3 = bin_dir.openFile(io, "python3.exe", .{}) catch continue;
+        python3.close(io);
+        return bin;
+    }
+    return null;
 }
 
 const GnArgs = struct {
@@ -48,8 +140,14 @@ const GnArgs = struct {
         var args: std.ArrayList(u8) = .empty;
         const gpa = b.allocator;
 
-        // Use modern siso instead of outdated ninja to speed up the build.
-        try args.appendSlice(gpa, "use_siso=true\n");
+        if (builtin.os.tag == .windows) {
+            // autoninja on Windows wraps ninja directly;
+            // siso is not used there.
+            try args.appendSlice(gpa, "use_siso=false\n");
+        } else {
+            // Use modern siso instead of outdated ninja to speed up the build.
+            try args.appendSlice(gpa, "use_siso=true\n");
+        }
 
         // official builds depend on pgo
         try args.appendSlice(gpa, "is_official_build=false\n");
@@ -285,15 +383,21 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
 
     if (!needs_full_bootstrap) {
         std.debug.print("Using cached depot_tools bootstrap from {s}\n", .{depot_tools_dir});
-        const noop = b.addSystemCommand(&.{"true"});
+        const noop = b.addSystemCommand(if (builtin.os.tag == .windows)
+            &.{ "cmd", "/c", "exit", "0" }
+        else
+            &.{"true"});
         return &noop.step;
     }
 
     std.debug.print("Bootstrapping depot_tools {s} in {s} (this will take a while)...\n", .{ V8_VERSION, depot_tools_dir });
 
-    const copy_depot_tools = b.addSystemCommand(&.{ "cp", "-r" });
+    const copy_depot_tools = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{ "cmd", "/c", "xcopy", "/e", "/i", "/y" }
+    else
+        &.{ "cp", "-r" });
     copy_depot_tools.addDirectoryArg2(depot_tools.path(""), .{});
-    copy_depot_tools.addArg(depot_tools_dir);
+    copy_depot_tools.addArg(cmdPath(b, depot_tools_dir));
 
     const build_telemetry_config_content =
         \\ {
@@ -304,21 +408,50 @@ fn bootstrapDepotTools(b: *std.Build, depot_tools_dir: []const u8) !*std.Build.S
         \\ }
     ;
 
-    const write_telemetry_config = b.addSystemCommand(&.{ "sh", "-c" });
-    write_telemetry_config.addArg(b.fmt("echo '{s}' > {s}/build_telemetry.cfg", .{
-        build_telemetry_config_content,
-        depot_tools_dir,
-    }));
-    write_telemetry_config.step.dependOn(&copy_depot_tools.step);
+    const telemetry_config_step: *std.Build.Step = blk: {
+        if (builtin.os.tag == .windows) {
+            const write_telemetry_config = b.addWriteFiles();
+            const telemetry_config_file = write_telemetry_config.add(
+                "build_telemetry.cfg",
+                build_telemetry_config_content,
+            );
+            const copy_telemetry_config = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
+            copy_telemetry_config.addFileArg(telemetry_config_file);
+            copy_telemetry_config.addArg(cmdPath(b, b.fmt("{s}/build_telemetry.cfg", .{depot_tools_dir})));
+            copy_telemetry_config.step.dependOn(&copy_depot_tools.step);
+            break :blk &copy_telemetry_config.step;
+        } else {
+            const write_telemetry_config = b.addSystemCommand(&.{ "sh", "-c" });
+            write_telemetry_config.addArg(b.fmt("echo '{s}' > {s}/build_telemetry.cfg", .{
+                build_telemetry_config_content,
+                depot_tools_dir,
+            }));
+            write_telemetry_config.step.dependOn(&copy_depot_tools.step);
+            break :blk &write_telemetry_config.step;
+        }
+    };
 
-    const ensure_bootstrap = b.addSystemCommand(&.{
-        getDepotToolExePath(b, depot_tools_dir, "ensure_bootstrap"),
-    });
+    const ensure_bootstrap = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{
+            // python-bin/python3.bat requires the bootstrapped state
+            // (python3_bin_reldir.txt) which does not exist on a fresh
+            // tree; the POSIX ensure_bootstrap script runs under any sh.
+            "sh",
+            "ensure_bootstrap",
+        }
+    else
+        &.{
+            getDepotToolExePath(b, depot_tools_dir, "ensure_bootstrap"),
+        });
     ensure_bootstrap.setCwd(b.graph.cwdRelativePath(depot_tools_dir));
     addDepotToolsToPath(ensure_bootstrap, depot_tools_dir);
-    ensure_bootstrap.step.dependOn(&write_telemetry_config.step);
+    ensure_bootstrap.step.dependOn(telemetry_config_step);
 
-    const create_marker = b.addSystemCommand(&.{ "touch", marker_file });
+    const create_marker = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{ "cmd", "/c", "type", "nul", ">" }
+    else
+        &.{"touch"});
+    create_marker.addArg(cmdPath(b, marker_file));
     create_marker.step.dependOn(&ensure_bootstrap.step);
 
     return &create_marker.step;
@@ -389,21 +522,35 @@ fn bootstrapV8(
 
             var prev_step: *std.Build.Step = undefined;
             for (staged_files, 0..) |f, i| {
-                const cp = b.addSystemCommand(&.{"cp"});
+                const cp = b.addSystemCommand(if (builtin.os.tag == .windows)
+                    &.{ "cmd", "/c", "copy", "/y" }
+                else
+                    &.{"cp"});
                 cp.addFileArg2(b.path(f.src), .{});
-                cp.addArg(b.fmt("{s}/{s}", .{ v8_dir, f.dest }));
-                if (i > 0) cp.step.dependOn(prev_step);
+                cp.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
+                // Chain the first staged copy on the depot_tools
+                // bootstrap so gn/ninja never spawn before depot_tools
+                // has been copied into place (the full-bootstrap path
+                // already orders via mkdir's dependOn).
+                if (i > 0) cp.step.dependOn(prev_step) else cp.step.dependOn(bootstrapped_depot_tools);
                 prev_step = &cp.step;
             }
 
-            const update_marker = b.addSystemCommand(&.{ "touch", marker_file });
+            const update_marker = b.addSystemCommand(if (builtin.os.tag == .windows)
+                &.{ "cmd", "/c", "type", "nul", ">" }
+            else
+                &.{"touch"});
+            update_marker.addArg(cmdPath(b, marker_file));
             update_marker.step.dependOn(prev_step);
 
             return .{ .step = &update_marker.step, .needs_build = true };
         } else {
             // Cached V8 is still valid.
             std.debug.print("Using cached V8 bootstrap from {s}\n", .{v8_dir});
-            const noop = b.addSystemCommand(&.{"true"});
+            const noop = b.addSystemCommand(if (builtin.os.tag == .windows)
+                &.{ "cmd", "/c", "exit", "0" }
+            else
+                &.{"true"});
             return .{ .step = &noop.step, .needs_build = false };
         }
     }
@@ -411,7 +558,11 @@ fn bootstrapV8(
     std.debug.print("Bootstrapping V8 {s} in {s} (this will take a while)...\n", .{ V8_VERSION, v8_dir });
 
     // Create cache directory
-    const mkdir = b.addSystemCommand(&.{ "mkdir", "-p", v8_dir });
+    const mkdir = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{ "cmd", "/c", "if", "not", "exist" }
+    else
+        &.{ "mkdir", "-p" });
+    addIdempotentMkdirArg(mkdir, cmdPath(b, v8_dir));
     mkdir.step.dependOn(bootstrapped_depot_tools);
 
     // Write .gclient file
@@ -428,44 +579,89 @@ fn bootstrapV8(
         \\
     , .{V8_VERSION});
 
-    const write_gclient = b.addSystemCommand(&.{ "sh", "-c" });
-    write_gclient.addArg(b.fmt("echo '{s}' > {s}/.gclient", .{ gclient_content, v8_dir }));
-    write_gclient.step.dependOn(&mkdir.step);
+    const gclient_config_step: *std.Build.Step = blk: {
+        if (builtin.os.tag == .windows) {
+            const write_gclient = b.addWriteFiles();
+            const gclient_config_file = write_gclient.add("gclient", gclient_content);
+            const copy_gclient = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
+            copy_gclient.addFileArg(gclient_config_file);
+            copy_gclient.addArg(cmdPath(b, b.fmt("{s}/.gclient", .{v8_dir})));
+            copy_gclient.step.dependOn(&mkdir.step);
+            break :blk &copy_gclient.step;
+        } else {
+            const write_gclient = b.addSystemCommand(&.{ "sh", "-c" });
+            write_gclient.addArg(b.fmt("echo '{s}' > {s}/.gclient", .{ gclient_content, v8_dir }));
+            write_gclient.step.dependOn(&mkdir.step);
+            break :blk &write_gclient.step;
+        }
+    };
 
-    var prev_stage_step: *std.Build.Step = &write_gclient.step;
+    var prev_stage_step: *std.Build.Step = gclient_config_step;
     for (staged_files) |f| {
         if (std.fs.path.dirname(f.dest)) |parent| {
-            const mkdir_parent = b.addSystemCommand(&.{ "mkdir", "-p", b.fmt("{s}/{s}", .{ v8_dir, parent }) });
+            const mkdir_parent = b.addSystemCommand(if (builtin.os.tag == .windows)
+                &.{ "cmd", "/c", "if", "not", "exist" }
+            else
+                &.{ "mkdir", "-p" });
+            addIdempotentMkdirArg(mkdir_parent, cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, parent })));
             mkdir_parent.step.dependOn(prev_stage_step);
             prev_stage_step = &mkdir_parent.step;
         }
-        const cp = b.addSystemCommand(&.{"cp"});
+        const cp = b.addSystemCommand(if (builtin.os.tag == .windows)
+            &.{ "cmd", "/c", "copy", "/y" }
+        else
+            &.{"cp"});
         cp.addFileArg2(b.path(f.src), .{});
-        cp.addArg(b.fmt("{s}/{s}", .{ v8_dir, f.dest }));
+        cp.addArg(cmdPath(b, b.fmt("{s}/{s}", .{ v8_dir, f.dest })));
         cp.step.dependOn(prev_stage_step);
         prev_stage_step = &cp.step;
     }
 
     // Create gclient_args.gni
-    const mkdir_build_config = b.addSystemCommand(&.{ "mkdir", "-p", b.fmt("{s}/build/config", .{v8_dir}) });
+    const mkdir_build_config = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{ "cmd", "/c", "if", "not", "exist" }
+    else
+        &.{ "mkdir", "-p" });
+    addIdempotentMkdirArg(mkdir_build_config, cmdPath(b, b.fmt("{s}/build/config", .{v8_dir})));
     mkdir_build_config.step.dependOn(prev_stage_step);
 
-    const write_gclient_args = b.addSystemCommand(&.{ "sh", "-c" });
-    write_gclient_args.addArg(b.fmt("echo '# Generated by Zig build system' > {s}/build/config/gclient_args.gni", .{v8_dir}));
-    write_gclient_args.step.dependOn(&mkdir_build_config.step);
+    const gclient_args_step: *std.Build.Step = blk: {
+        if (builtin.os.tag == .windows) {
+            const write_gclient_args = b.addWriteFiles();
+            const gclient_args_file = write_gclient_args.add(
+                "gclient_args.gni",
+                "# Generated by Zig build system\n",
+            );
+            const copy_gclient_args = b.addSystemCommand(&.{ "cmd", "/c", "copy", "/y" });
+            copy_gclient_args.addFileArg(gclient_args_file);
+            copy_gclient_args.addArg(cmdPath(b, b.fmt("{s}/build/config/gclient_args.gni", .{v8_dir})));
+            copy_gclient_args.step.dependOn(&mkdir_build_config.step);
+            break :blk &copy_gclient_args.step;
+        } else {
+            const write_gclient_args = b.addSystemCommand(&.{ "sh", "-c" });
+            write_gclient_args.addArg(b.fmt("echo '# Generated by Zig build system' > {s}/build/config/gclient_args.gni", .{v8_dir}));
+            write_gclient_args.step.dependOn(&mkdir_build_config.step);
+            break :blk &write_gclient_args.step;
+        }
+    };
 
     // Run gclient sync
     const gclient_sync = b.addSystemCommand(&.{
-        getDepotToolExePath(b, depot_tools_dir, "gclient"),
+        getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "gclient.bat" else "gclient"),
         "sync",
     });
     gclient_sync.setCwd(b.graph.cwdRelativePath(v8_dir));
+    // WIN-PORT: the depot_tools dependency ships as an archive (no .git);
+    // update_depot_tools.bat hard-errors on that, so pin the snapshot.
+    if (builtin.os.tag == .windows) {
+        gclient_sync.setEnvironmentVariable("DEPOT_TOOLS_UPDATE", "0");
+    }
     addDepotToolsToPath(gclient_sync, depot_tools_dir);
-    gclient_sync.step.dependOn(&write_gclient_args.step);
+    gclient_sync.step.dependOn(gclient_args_step);
 
     // Run clang update
     const clang_update = b.addSystemCommand(&.{
-        getDepotToolExePath(b, depot_tools_dir, "python-bin/python3"),
+        getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "python-bin/python3.bat" else "python-bin/python3"),
         "tools/clang/scripts/update.py",
     });
     clang_update.setCwd(b.graph.cwdRelativePath(v8_dir));
@@ -473,7 +669,11 @@ fn bootstrapV8(
     clang_update.step.dependOn(&gclient_sync.step);
 
     // Create marker file
-    const create_marker = b.addSystemCommand(&.{ "touch", marker_file });
+    const create_marker = b.addSystemCommand(if (builtin.os.tag == .windows)
+        &.{ "cmd", "/c", "type", "nul", ">" }
+    else
+        &.{"touch"});
+    create_marker.addArg(cmdPath(b, marker_file));
     create_marker.step.dependOn(&clang_update.step);
 
     return .{ .step = &create_marker.step, .needs_build = true };
@@ -506,7 +706,7 @@ fn buildV8(
         args_hash = args_hash *% 33 +% c;
     }
     const out_dir = b.fmt("out/{s}/{s}_{x}", .{ @tagName(target.result.os.tag), if (gn_args.is_debug) "debug" else "release", args_hash });
-    const libc_v8_path = b.fmt("{s}/obj/zig/libc_v8.a", .{out_dir});
+    const libc_v8_path = if (builtin.os.tag == .windows) b.fmt("{s}/obj/zig/c_v8.lib", .{out_dir}) else b.fmt("{s}/obj/zig/libc_v8.a", .{out_dir}); // WIN-PORT PATCH: msvc static lib naming
     const full_libc_v8_lazy_path = v8_dir_lazy_path.path(b, libc_v8_path);
 
     // Bootstrap marker is shared across profiles, so compare staged sources
@@ -534,8 +734,24 @@ fn buildV8(
     var last_step: *std.Build.Step = undefined;
 
     if (needs_build) {
+        // WIN-PORT: adapt the freshly synced V8 tree to the local
+        // Windows toolchain (SDK 10.0.26100.0, dynamic CRT, no CFG
+        // guards) before GN generates the build. Both bootstrap
+        // paths (full gclient sync and the staged-files update)
+        // funnel through bootstrapped_v8.step, so the patch runs
+        // after the tree is in place on either path.
+        const v8_tree_compat = b.addSystemCommand(if (builtin.os.tag == .windows)
+            &.{"python3"}
+        else
+            &.{"true"});
+        if (builtin.os.tag == .windows) {
+            v8_tree_compat.addFileArg(b.path("build-tools/windows-v8-compat.py"));
+            v8_tree_compat.addArg(v8_dir);
+        }
+        v8_tree_compat.step.dependOn(bootstrapped_v8.step);
+
         const gn_run = b.addSystemCommand(&.{
-            getDepotToolExePath(b, depot_tools_dir, "gn"),
+            getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "gn.exe" else "gn"),
             "--root=.",
             "--root-target=//zig",
             "--dotfile=zig/.gn",
@@ -545,10 +761,10 @@ fn buildV8(
         });
         gn_run.setCwd(v8_dir_lazy_path);
         addDepotToolsToPath(gn_run, depot_tools_dir);
-        gn_run.step.dependOn(bootstrapped_v8.step);
+        gn_run.step.dependOn(&v8_tree_compat.step);
 
         const ninja_run = b.addSystemCommand(&.{
-            getDepotToolExePath(b, depot_tools_dir, "autoninja"),
+            getDepotToolExePath(b, depot_tools_dir, if (builtin.os.tag == .windows) "ninja.exe" else "autoninja"),
             "-C",
             out_dir,
             "c_v8",
