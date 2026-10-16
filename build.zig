@@ -5,6 +5,10 @@ const V8_VERSION: []const u8 = "15.5.35.13";
 
 const LazyPath = std.Build.LazyPath;
 
+// Chromium ships no clang or Rust toolchain for Linux arm64 hosts, so those
+// builds use the system LLVM.
+const linux_arm64_clang_base_path = "/usr/lib/llvm-23";
+
 // Shim files staged into the V8 checkout. `src` is relative to this repo,
 // `dest` is relative to the V8 source tree root. Any file added here is
 // automatically copied during bootstrap and watched by the freshness check.
@@ -77,7 +81,7 @@ const GnArgs = struct {
             },
             .linux => {
                 if (arch == .aarch64) {
-                    try args.appendSlice(gpa, "clang_base_path=\"/usr/lib/llvm-23\"\n");
+                    try args.appendSlice(gpa, b.fmt("clang_base_path=\"{s}\"\n", .{linux_arm64_clang_base_path}));
                     // Must match clang_base_path; V8's default tracks its bundled clang.
                     try args.appendSlice(gpa, "clang_version=\"23\"\n");
                     try args.appendSlice(gpa, "clang_use_chrome_plugins=false\n");
@@ -547,6 +551,20 @@ fn buildV8(
         gn_run.setCwd(v8_dir_lazy_path);
         addDepotToolsToPath(gn_run, depot_tools_dir);
         gn_run.step.dependOn(bootstrapped_v8.step);
+
+        // DEPS fetches Chromium's x86-64 Rust toolchain on any Linux host.
+        const host = b.graph.host.result;
+        if (host.os.tag == .linux and host.cpu.arch == .aarch64) {
+            const rust_toolchain = b.addSystemCommand(&.{
+                getDepotToolExePath(b, depot_tools_dir, "python-bin/python3"),
+            });
+            rust_toolchain.addFileArg2(b.path("build-tools/rust_toolchain.py"), .{});
+            rust_toolchain.addArgs(&.{ "--clang-base-path", linux_arm64_clang_base_path });
+            rust_toolchain.setCwd(v8_dir_lazy_path);
+            addDepotToolsToPath(rust_toolchain, depot_tools_dir);
+            rust_toolchain.step.dependOn(bootstrapped_v8.step);
+            gn_run.step.dependOn(&rust_toolchain.step);
+        }
 
         const ninja_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, "autoninja"),
