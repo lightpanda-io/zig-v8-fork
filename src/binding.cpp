@@ -1101,6 +1101,14 @@ int v8__Module__ScriptId(const v8::Module& self) {
     return self.ScriptId();
 }
 
+const v8::UnboundModuleScript* v8__Module__GetUnboundModuleScript(const v8::Module& self) {
+    return local_to_ptr(ptr_to_local(&self)->GetUnboundModuleScript());
+}
+
+v8::ScriptCompiler::CachedData* v8__ScriptCompiler__CreateModuleCodeCache(const v8::UnboundModuleScript& unbound) {
+    return v8::ScriptCompiler::CreateCodeCache(ptr_to_local(&unbound));
+}
+
 // ModuleRequest
 
 const v8::String* v8__ModuleRequest__GetSpecifier(const v8::ModuleRequest& self) {

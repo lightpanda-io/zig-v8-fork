@@ -1355,6 +1355,15 @@ int v8__Module__GetIdentityHash(const Module* self);
 Value* v8__Module__GetModuleNamespace(const Module* self);
 int v8__Module__ScriptId(const Module* self);
 
+// The module's context-independent compiled code, valid in any module status.
+// Serialize it with v8__ScriptCompiler__CreateModuleCodeCache.
+typedef struct Data UnboundModuleScript;
+const UnboundModuleScript* v8__Module__GetUnboundModuleScript(const Module* self);
+
+// Like v8__ScriptCompiler__CreateCodeCache, for a module. Consume the bytes
+// with v8__ScriptCompiler__CompileModule + kConsumeCodeCache.
+ScriptCompilerCachedData* v8__ScriptCompiler__CreateModuleCodeCache(const UnboundModuleScript* unbound);
+
 Script* v8__ScriptCompiler__Compile(
         const Context* context,
         ScriptCompilerSource* source,
