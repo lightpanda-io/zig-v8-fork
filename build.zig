@@ -534,6 +534,19 @@ fn buildV8(
     var last_step: *std.Build.Step = undefined;
 
     if (needs_build) {
+        // v8_monolithic also switches all of V8 to default visibility. A Mach-O
+        // executable exports every such symbol, and dyld binds thousands of weak
+        // V8 definitions on each launch (~30ms). Keep V8 hidden; binding.cpp sets
+        // its own visibility.
+        const patch_visibility = b.addSystemCommand(&.{
+            "sh", "-c",
+            \\f=gni/v8.gni
+            \\sed 's/(v8_enable_backtrace || v8_monolithic)/v8_enable_backtrace/' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+            \\grep -q '(is_posix || is_fuchsia) && v8_enable_backtrace)' "$f" || { echo "$f: visibility patch did not apply" >&2; exit 1; }
+        });
+        patch_visibility.setCwd(v8_dir_lazy_path);
+        patch_visibility.step.dependOn(bootstrapped_v8.step);
+
         const gn_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, "gn"),
             "--root=.",
@@ -545,7 +558,7 @@ fn buildV8(
         });
         gn_run.setCwd(v8_dir_lazy_path);
         addDepotToolsToPath(gn_run, depot_tools_dir);
-        gn_run.step.dependOn(bootstrapped_v8.step);
+        gn_run.step.dependOn(&patch_visibility.step);
 
         const ninja_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, "autoninja"),
