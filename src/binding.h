@@ -443,6 +443,7 @@ void v8__HandleScope__DESTRUCT(HandleScope* scope);
 const String* v8__Message__Get(const Message* self);
 const String* v8__Message__GetSourceLine(const Message* self, const Context* context);
 const Value* v8__Message__GetScriptResourceName(const Message* self);
+int v8__Message__GetScriptId(const Message* self);
 int v8__Message__GetLineNumber(const Message* self, const Context* context);
 int v8__Message__GetStartColumn(const Message* self);
 int v8__Message__GetEndColumn(const Message* self);

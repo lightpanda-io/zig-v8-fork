@@ -2466,6 +2466,10 @@ const v8::Value* v8__Message__GetScriptResourceName(const v8::Message& self) {
     return local_to_ptr(self.GetScriptResourceName());
 }
 
+int v8__Message__GetScriptId(const v8::Message& self) {
+    return self.GetScriptOrigin().ScriptId();
+}
+
 int v8__Message__GetLineNumber(
         const v8::Message& self,
         const v8::Context& context) {
