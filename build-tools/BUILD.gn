@@ -1,7 +1,14 @@
 # Copyright 2018-2019 the Deno authors. All rights reserved. MIT license.
 # Based on https://github.com/denoland/rusty_v8/blob/main/BUILD.gn
 
-static_library("c_v8") {
+import("//build/config/clang/clang.gni")
+
+# libc_v8.a is built in three steps: complete_static_lib leaves out Rust code
+# (rlibs are only passed to final links), and a Rust staticlib can bundle C++
+# archives but not the other way around.
+
+# 1. The C++ half.
+static_library("c_v8_cpp") {
   complete_static_lib = true
 
   sources = [ "../binding.cpp" ]
@@ -16,6 +23,45 @@ static_library("c_v8") {
     "//build/config/compiler:thin_archive",
   ]
   configs += [ ":c_v8_config" ]
+}
+
+# 2. rustc bundles the Rust code V8 calls (Temporal: temporal_capi, its crates
+# and the standard library) with c_v8_cpp. GN only hands a C++ dep to rustc as
+# a link arg, which a staticlib ignores, hence -lstatic.
+static_library("c_v8_rust") {
+  crate_type = "staticlib"
+  crate_root = "c_v8_rust.rs"
+  sources = [ "c_v8_rust.rs" ]
+  deps = [
+    ":c_v8_cpp",
+    "//third_party/rust/temporal_capi",
+  ]
+  rustflags = [
+    "-Lnative=" + rebase_path(target_out_dir, root_build_dir),
+    "-lstatic=c_v8_cpp",
+  ]
+}
+
+# 3. The embedder links its own Rust standard library; rust_eh_personality is
+# the one symbol both define unmangled, so this copy is renamed (nothing
+# V8-side references it).
+action("c_v8") {
+  script = "//build/gn_run_binary.py"
+  deps = [ ":c_v8_rust" ]
+  inputs = [ "$target_out_dir/libc_v8_rust.a" ]
+  outputs = [ "$target_out_dir/libc_v8.a" ]
+
+  _prefix = ""
+  if (is_apple) {
+    _prefix = "_"
+  }
+  args = [
+    rebase_path("$clang_base_path/bin/llvm-objcopy", root_build_dir),
+    "--redefine-sym",
+    "${_prefix}rust_eh_personality=${_prefix}v8_rust_eh_personality",
+    rebase_path(inputs[0], root_build_dir),
+    rebase_path(outputs[0], root_build_dir),
+  ]
 }
 
 config("c_v8_config") {

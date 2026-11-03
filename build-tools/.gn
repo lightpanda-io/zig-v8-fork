@@ -101,8 +101,10 @@ default_args = {
 
   icu_use_data_file = false
 
-  # requires rust toolchain
-  v8_enable_temporal_support = false
+  # Rust toolchain is required for Temporal API.
+  enable_rust = true
+  enable_rust_cxx = true
+  v8_enable_temporal_support = true
 
   # build fails on some linux systems without this
   use_llvm_libatomic = false
