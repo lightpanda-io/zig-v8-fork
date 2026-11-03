@@ -647,6 +647,18 @@ bool v8__Isolate__HasPendingBackgroundTasks(v8::Isolate* self) {
     return self->HasPendingBackgroundTasks();
 }
 
+// Stored on each promise reaction / queued microtask when it is created, and
+// restored while it runs. Undefined when unset. Cleared (not restored) after
+// each microtask.
+const v8::Data* v8__Isolate__GetContinuationPreservedEmbedderData(v8::Isolate* self) {
+    return local_to_ptr(self->GetContinuationPreservedEmbedderDataV2());
+}
+
+// null sets it to undefined.
+void v8__Isolate__SetContinuationPreservedEmbedderData(v8::Isolate* self, const v8::Data* data) {
+    self->SetContinuationPreservedEmbedderDataV2(ptr_to_local(data));
+}
+
 // MicrotaskQueue
 
 // The queue lives on the isolate's CppHeap, and V8 only holds it strongly while
