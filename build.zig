@@ -40,6 +40,7 @@ const GnArgs = struct {
     is_debug: bool,
     symbol_level: u8,
     v8_enable_sandbox: bool,
+    musl_sysroot: ?[]const u8,
 
     fn asString(self: GnArgs, b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
         const tag = target.result.os.tag;
@@ -75,11 +76,29 @@ const GnArgs = struct {
                 try args.appendSlice(gpa, "v8_enable_webassembly=false\n");
             },
             .linux => {
+                const is_musl = target.result.abi.isMusl();
+                if (is_musl) {
+                    const sysroot = self.musl_sysroot orelse {
+                        std.debug.print("Building V8 for musl needs -Dmusl_sysroot, or -Dprebuilt_v8_path\n", .{});
+                        return error.MuslSysrootRequired;
+                    };
+                    if (!std.fs.path.isAbsolute(sysroot)) {
+                        std.debug.print("-Dmusl_sysroot must be an absolute path (got {s})\n", .{sysroot});
+                        return error.MuslSysrootNotAbsolute;
+                    }
+                    try args.appendSlice(gpa, "use_sysroot=false\n");
+                    try args.appendSlice(gpa, b.fmt("target_sysroot=\"{s}\"\n", .{sysroot}));
+                    try args.appendSlice(gpa, b.fmt("lp_musl_target=\"{t}-alpine-linux-musl\"\n", .{arch}));
+                    try args.appendSlice(gpa, "use_glib=false\n");
+                }
                 if (arch == .aarch64) {
                     try args.appendSlice(gpa, "clang_base_path=\"/usr/lib/llvm-23\"\n");
                     // Must match clang_base_path; V8's default tracks its bundled clang.
                     try args.appendSlice(gpa, "clang_version=\"23\"\n");
                     try args.appendSlice(gpa, "clang_use_chrome_plugins=false\n");
+                }
+                // On musl, V8's glibc-only helpers trip -Wunused-function.
+                if (is_musl or arch == .aarch64) {
                     try args.appendSlice(gpa, "treat_warnings_as_errors=false\n");
                 }
             },
@@ -103,6 +122,7 @@ pub fn build(b: *std.Build) !void {
         .is_asan = b.option(bool, "is_asan", "Address sanitizer") orelse false,
         .is_tsan = b.option(bool, "is_tsan", "Thread sanitizer") orelse false,
         .v8_enable_sandbox = b.option(bool, "v8_enable_sandbox", "V8 lightable sandbox") orelse false,
+        .musl_sysroot = b.option([]const u8, "musl_sysroot", "Absolute path to a musl sysroot (libc headers and libc.a, linux headers, libgcc), for building V8 for a musl target"),
     };
 
     var build_opts = b.addOptions();
@@ -547,6 +567,26 @@ fn buildV8(
         patch_visibility.setCwd(v8_dir_lazy_path);
         patch_visibility.step.dependOn(bootstrapped_v8.step);
 
+        var patched: *std.Build.Step = &patch_visibility.step;
+        if (target.result.os.tag == .linux and target.result.abi.isMusl()) {
+            // GN has no musl target. Executables link statically because host
+            // tools such as mksnapshot share this toolchain and must run on the
+            // glibc build machine. ANDROID_HOST_MUSL is the only switch for
+            // musl in Chromium's libc++ __config_site. The arg defaults to
+            // empty, so glibc builds from this checkout are unaffected.
+            const patch_musl = b.addSystemCommand(&.{
+                "sh", "-c",
+                \\f=build/config/compiler/BUILD.gn
+                \\grep -q lp_musl_target "$f" && exit 0
+                \\sed -e '/^config("compiler_cpu_abi") {$/,/^}$/s|^  asmflags = cflags$|  if (lp_musl_target != "") {\n    _musl_target = "--target=" + lp_musl_target\n    cflags += [ _musl_target ]\n    ldflags += [ _musl_target, "-static" ]\n    defines += [ "ANDROID_HOST_MUSL" ]\n  }\n  asmflags = cflags|' \
+                \\    -e 's|^config("compiler_cpu_abi") {$|declare_args() {\n  lp_musl_target = ""\n}\n\nconfig("compiler_cpu_abi") {|' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+                \\grep -q 'defines += \[ "ANDROID_HOST_MUSL" \]' "$f" || { echo "$f: musl patch did not apply" >&2; exit 1; }
+            });
+            patch_musl.setCwd(v8_dir_lazy_path);
+            patch_musl.step.dependOn(patched);
+            patched = &patch_musl.step;
+        }
+
         const gn_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, "gn"),
             "--root=.",
@@ -558,7 +598,7 @@ fn buildV8(
         });
         gn_run.setCwd(v8_dir_lazy_path);
         addDepotToolsToPath(gn_run, depot_tools_dir);
-        gn_run.step.dependOn(&patch_visibility.step);
+        gn_run.step.dependOn(patched);
 
         const ninja_run = b.addSystemCommand(&.{
             getDepotToolExePath(b, depot_tools_dir, "autoninja"),
