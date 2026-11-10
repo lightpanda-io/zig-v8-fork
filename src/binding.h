@@ -949,6 +949,65 @@ void v8__ReturnValue__Set(
 const Value* v8__ReturnValue__Get(
     const ReturnValue self);
 
+// Fast API
+typedef enum CTypeInfoType {
+    kCTypeInfoType_Void = 0,
+    kCTypeInfoType_Bool = 1,
+    kCTypeInfoType_Uint8 = 2,
+    kCTypeInfoType_Int32 = 3,
+    kCTypeInfoType_Uint32 = 4,
+    kCTypeInfoType_Int64 = 5,
+    kCTypeInfoType_Uint64 = 6,
+    kCTypeInfoType_Float32 = 7,
+    kCTypeInfoType_Float64 = 8,
+    kCTypeInfoType_Pointer = 9,
+    kCTypeInfoType_V8Value = 10,
+    kCTypeInfoType_SeqOneByteString = 11,
+    kCTypeInfoType_ApiObject = 12,
+    kCTypeInfoType_Any = 13,
+    // CTypeInfo::kCallbackOptionsType; only valid as the last argument.
+    kCTypeInfoType_CallbackOptions = 255,
+} CTypeInfoType;
+typedef enum CTypeInfoFlags {
+    kCTypeInfoFlags_None = 0,
+    kCTypeInfoFlags_AllowSharedBit = 1 << 0,   // ArrayBuffer or TypedArray
+    kCTypeInfoFlags_EnforceRangeBit = 1 << 1,  // integral types
+    kCTypeInfoFlags_ClampBit = 1 << 2,         // integral types
+    kCTypeInfoFlags_IsRestrictedBit = 1 << 3,  // float or double
+} CTypeInfoFlags;
+typedef struct CTypeInfo {
+    uint8_t type;   // CTypeInfoType
+    uint8_t flags;  // CTypeInfoFlags, or-ed
+} CTypeInfo;
+
+typedef enum Int64Representation {
+    kInt64Representation_Number = 0,  // 64-bit integers as JS numbers
+    kInt64Representation_BigInt = 1,  // 64-bit integers as BigInts
+} Int64Representation;
+typedef struct CFunctionInfo {
+    CTypeInfo return_info;
+    uint8_t int64_representation;  // Int64Representation
+    // Counts the receiver and, if last, the kCallbackOptions argument.
+    unsigned int arg_count;
+    const CTypeInfo* arg_info;
+} CFunctionInfo;
+
+typedef struct CFunction {
+    const void* address;  // the fast callback
+    const CFunctionInfo* type_info;
+} CFunction;
+
+typedef struct FastApiCallbackOptions {
+    Isolate* isolate;
+    // The FunctionTemplate's data, or undefined.
+    const Value* data;
+} FastApiCallbackOptions;
+
+typedef struct FastOneByteString {
+    const char* data;
+    uint32_t length;
+} FastOneByteString;
+
 // FunctionTemplate
 typedef void (*FunctionCallback)(const FunctionCallbackInfo*);
 
@@ -970,6 +1029,9 @@ typedef struct v8__FunctionTemplateConfig {
     int length;
     ConstructorBehavior behavior;
     SideEffectType side_effect_type;
+    // Fast API callback, or null. Requires kConstructorBehavior_Throw; V8 keeps
+    // the type_info pointer, so it must outlive the template.
+    const CFunction* c_function;
 } v8__FunctionTemplateConfig;
 
 const FunctionTemplate* v8__FunctionTemplate__New__DEFAULT(
