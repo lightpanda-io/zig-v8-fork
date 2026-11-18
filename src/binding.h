@@ -230,6 +230,11 @@ bool v8__V8__InitializeICU();
 // LC_ALL it leaves the C library's locale alone. Call after InitializeICU and
 // before creating an isolate. False when the tag does not parse.
 bool v8__V8__SetDefaultLocale(const char* bcp47_tag);
+// ICU's default time zone, which Date and Intl fall back to, from an IANA id.
+// The default is process-wide, and an isolate keeps the offsets it has cached
+// until v8__Isolate__DateTimeConfigurationChangeNotification. False, and the
+// zone left alone, when ICU does not know the id.
+bool v8__V8__SetDefaultTimeZone(const char* iana_id);
 int v8__V8__Dispose();
 void v8__V8__DisposePlatform();
 const char* v8__V8__GetVersion();
@@ -269,6 +274,12 @@ const Value* v8__Isolate__ThrowException(
     Isolate* isolate,
     const Value* exception);
 void v8__Isolate__ContextDisposedNotification(Isolate* isolate);
+// Drops the time zone and UTC offsets the isolate has cached, so Date and Intl
+// read ICU's default zone again. With redetect_host_time_zone, V8 first
+// resets that default to the host's zone (TZ, then the system setting).
+void v8__Isolate__DateTimeConfigurationChangeNotification(
+    Isolate* isolate,
+    bool redetect_host_time_zone);
 void v8__Isolate__SetHostImportModuleDynamicallyCallback(
     Isolate* isolate,
     HostImportModuleDynamicallyCallback callback);
