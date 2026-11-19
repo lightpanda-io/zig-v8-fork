@@ -2,12 +2,14 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include "include/cppgc/persistent.h"
 #include "include/libplatform/libplatform.h"
+#include "include/v8-fast-api-calls.h"
 #include "include/v8-inspector.h"
 #include "include/v8-profiler.h"
 #include "include/v8.h"
@@ -2063,6 +2065,65 @@ const v8::Value* v8__ReturnValue__Get(
     return local_to_ptr(self.Get());
 }
 
+// Fast API calls
+typedef enum CTypeInfoType {
+    kCTypeInfoType_Void = 0,
+    kCTypeInfoType_Bool = 1,
+    kCTypeInfoType_Uint8 = 2,
+    kCTypeInfoType_Int32 = 3,
+    kCTypeInfoType_Uint32 = 4,
+    kCTypeInfoType_Int64 = 5,
+    kCTypeInfoType_Uint64 = 6,
+    kCTypeInfoType_Float32 = 7,
+    kCTypeInfoType_Float64 = 8,
+    kCTypeInfoType_Pointer = 9,
+    kCTypeInfoType_V8Value = 10,
+    kCTypeInfoType_SeqOneByteString = 11,
+    kCTypeInfoType_ApiObject = 12,
+    kCTypeInfoType_Any = 13,
+    kCTypeInfoType_CallbackOptions = 255,
+} CTypeInfoType;
+
+typedef enum CTypeInfoFlags {
+    kCTypeInfoFlags_None = 0,
+    kCTypeInfoFlags_AllowSharedBit = 1 << 0,
+    kCTypeInfoFlags_EnforceRangeBit = 1 << 1,
+    kCTypeInfoFlags_ClampBit = 1 << 2,
+    kCTypeInfoFlags_IsRestrictedBit = 1 << 3,
+} CTypeInfoFlags;
+
+typedef struct CTypeInfo {
+    uint8_t type;
+    uint8_t flags;
+} CTypeInfo;
+
+typedef enum Int64Representation {
+    kInt64Representation_Number = 0,
+    kInt64Representation_BigInt = 1,
+} Int64Representation;
+
+typedef struct CFunctionInfo {
+    CTypeInfo return_info;
+    uint8_t int64_representation;
+    unsigned int arg_count;
+    const CTypeInfo* arg_info;
+} CFunctionInfo;
+
+typedef struct CFunction {
+    const void* address;
+    const CFunctionInfo* type_info;
+} CFunction;
+
+typedef struct FastApiCallbackOptions {
+    v8::Isolate* isolate;
+    const v8::Value* data;
+} FastApiCallbackOptions;
+
+typedef struct FastOneByteString {
+    const char* data;
+    uint32_t length;
+} FastOneByteString;
+
 // FunctionTemplate
 
 typedef enum SideEffectType {
@@ -2083,6 +2144,7 @@ typedef struct v8__FunctionTemplateConfig {
     int length;
     ConstructorBehavior behavior;
     SideEffectType side_effect_type;
+    const v8::CFunction* c_function;
 } v8__FunctionTemplateConfig;
 
 const v8::FunctionTemplate* v8__FunctionTemplate__New__DEFAULT(
@@ -2118,7 +2180,8 @@ const v8::FunctionTemplate* v8__FunctionTemplate__New__Config(
         signature,
         config->length,
         behavior,
-        side_effect
+        side_effect,
+        config->c_function
     ));
 }
 
