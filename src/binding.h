@@ -449,6 +449,7 @@ int v8__Message__GetLineNumber(const Message* self, const Context* context);
 int v8__Message__GetStartColumn(const Message* self);
 int v8__Message__GetEndColumn(const Message* self);
 const StackTrace* v8__Message__GetStackTrace(const Message* self);
+bool v8__Message__IsOpaque(const Message* self);
 
 // TryCatch
 typedef struct TryCatch {
