@@ -2509,6 +2509,8 @@ int v8__Message__GetEndColumn(const v8::Message& self) { return self.GetEndColum
 
 const v8::StackTrace* v8__Message__GetStackTrace(const v8::Message& self) { return local_to_ptr(self.GetStackTrace()); }
 
+bool v8__Message__IsOpaque(const v8::Message& self) { return self.IsOpaque(); }
+
 // StackTrace
 
 int v8__StackTrace__GetFrameCount(const v8::StackTrace& self) { return self.GetFrameCount(); }
