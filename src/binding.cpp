@@ -19,6 +19,8 @@
 
 #include "inspector.h"
 #include "unicode/locid.h"
+#include "unicode/timezone.h"
+#include "unicode/unistr.h"
 
 template <class T, class... Args>
 class Wrapper {
@@ -445,6 +447,14 @@ bool v8__V8__SetDefaultLocale(const char* bcp47_tag) {
     return U_SUCCESS(status);
 }
 
+bool v8__V8__SetDefaultTimeZone(const char* iana_id) {
+    std::unique_ptr<icu::TimeZone> zone(
+        icu::TimeZone::createTimeZone(icu::UnicodeString::fromUTF8(iana_id)));
+    if (!zone || *zone == icu::TimeZone::getUnknown()) return false;
+    icu::TimeZone::adoptDefault(zone.release());
+    return true;
+}
+
 int v8__V8__Dispose() { return v8::V8::Dispose(); }
 
 void v8__V8__DisposePlatform() { v8::V8::DisposePlatform(); }
@@ -482,6 +492,14 @@ const v8::Context* v8__Isolate__GetIncumbentContext(v8::Isolate* isolate) {
 
 void v8__Isolate__ContextDisposedNotification(v8::Isolate* isolate) {
     isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
+}
+
+void v8__Isolate__DateTimeConfigurationChangeNotification(
+        v8::Isolate* isolate,
+        bool redetect_host_time_zone) {
+    isolate->DateTimeConfigurationChangeNotification(
+        redetect_host_time_zone ? v8::Isolate::TimeZoneDetection::kRedetect
+                                : v8::Isolate::TimeZoneDetection::kSkip);
 }
 
 size_t v8__Isolate__CreateParams__SIZEOF() {
