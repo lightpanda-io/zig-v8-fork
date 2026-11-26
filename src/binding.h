@@ -802,6 +802,10 @@ void v8__Object__SetAlignedPointerInInternalField(
 void* v8__Object__GetAlignedPointerFromInternalField(
     const Object* self,
     int idx);
+void* v8__Object__GetAlignedPointerFromInternalField__Isolate(
+    const Object* self,
+    Isolate* isolate,
+    int idx);
 
 void v8__Object__HasPrivate(const Object* self, const Context *ctx, const Private* private, MaybeBool* out);
 void v8__Object__DeletePrivate(const Object* self, const Context *ctx, const Private* private, MaybeBool* out);

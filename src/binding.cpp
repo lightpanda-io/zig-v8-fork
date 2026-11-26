@@ -1854,6 +1854,15 @@ void * v8__Object__GetAlignedPointerFromInternalField(
     return ptr_to_local(self)->GetAlignedPointerFromInternalField(idx, v8::kEmbedderDataTypeTagDefault);
 }
 
+// Same, for callers that already have the isolate: saves v8 looking up the
+// current one.
+void * v8__Object__GetAlignedPointerFromInternalField__Isolate(
+        const v8::Object* self,
+        v8::Isolate* isolate,
+        int idx) {
+    return ptr_to_local(self)->GetAlignedPointerFromInternalField(isolate, idx, v8::kEmbedderDataTypeTagDefault);
+}
+
 void v8__Object__HasPrivate(
         const v8::Object& self,
         const v8::Context& ctx,
