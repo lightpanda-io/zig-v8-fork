@@ -1540,6 +1540,12 @@ void v8__Value__InstanceOf(
 
 // Template
 
+typedef enum SideEffectType {
+    kSideEffectType_HasSideEffect = 0,
+    kSideEffectType_HasNoSideEffect = 1,
+    kSideEffectType_HasSideEffectToReceiver = 2,
+} SideEffectType;
+
 void v8__Template__Set(
         const v8::Template& self,
         const v8::Name& key,
@@ -1557,6 +1563,22 @@ void v8__Template__SetAccessorProperty(
     v8::Local<v8::FunctionTemplate> getter_local = getter ? ptr_to_local(getter) : v8::Local<v8::FunctionTemplate>();
     v8::Local<v8::FunctionTemplate> setter_local = setter ? ptr_to_local(setter) : v8::Local<v8::FunctionTemplate>();
     ptr_to_local(&self)->SetAccessorProperty(ptr_to_local(&key), getter_local, setter_local, attribute);
+}
+
+void v8__Template__SetLazyDataProperty(
+        const v8::Template& self,
+        const v8::Name& key,
+        v8::AccessorNameGetterCallback getter,
+        const v8::Value* data,
+        v8::PropertyAttribute attribute,
+        SideEffectType getter_side_effect_type) {
+    v8::Local<v8::Value> data_local = data ? ptr_to_local(data) : v8::Local<v8::Value>();
+    ptr_to_local(&self)->SetLazyDataProperty(
+        ptr_to_local(&key),
+        getter,
+        data_local,
+        attribute,
+        static_cast<v8::SideEffectType>(getter_side_effect_type));
 }
 
 // ObjectTemplate
@@ -1767,6 +1789,25 @@ void v8__Object__DefineOwnProperty(
         ptr_to_local(&value),
         attr
     );
+}
+
+void v8__Object__SetLazyDataProperty(
+        const v8::Object& self,
+        const v8::Context& ctx,
+        const v8::Name& key,
+        v8::AccessorNameGetterCallback getter,
+        const v8::Value* data,
+        v8::PropertyAttribute attribute,
+        SideEffectType getter_side_effect_type,
+        v8::Maybe<bool>* out) {
+    v8::Local<v8::Value> data_local = data ? ptr_to_local(data) : v8::Local<v8::Value>();
+    *out = ptr_to_local(&self)->SetLazyDataProperty(
+        ptr_to_local(&ctx),
+        ptr_to_local(&key),
+        getter,
+        data_local,
+        attribute,
+        static_cast<v8::SideEffectType>(getter_side_effect_type));
 }
 
 const v8::Context* v8__Object__GetCreationContext(const v8::Object& self) {
@@ -2091,12 +2132,6 @@ const v8::Value* v8__ReturnValue__Get(
 }
 
 // FunctionTemplate
-
-typedef enum SideEffectType {
-    kSideEffectType_HasSideEffect = 0,
-    kSideEffectType_HasNoSideEffect = 1,
-    kSideEffectType_HasSideEffectToReceiver = 2,
-} SideEffectType;
 
 typedef enum ConstructorBehavior {
     kConstructorBehavior_Throw = 0,

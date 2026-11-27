@@ -145,6 +145,11 @@ typedef enum PropertyAttribute {
     /** DontDelete, i.e., not configurable. **/
     DontDelete = 1 << 2
 } PropertyAttribute;
+typedef enum SideEffectType {
+    kSideEffectType_HasSideEffect = 0,
+    kSideEffectType_HasNoSideEffect = 1,
+    kSideEffectType_HasSideEffectToReceiver = 2,
+} SideEffectType;
 
 // Platform
 typedef struct Platform Platform;
@@ -718,6 +723,10 @@ const Array* v8__Array__New2(
     size_t length);
 uint32_t v8__Array__Length(const Array* self);
 
+typedef struct PropertyCallbackInfo PropertyCallbackInfo;
+typedef void (*AccessorNameGetterCallback)(const Name*, const PropertyCallbackInfo*);
+typedef void (*AccessorNameSetterCallback)(const Name*, const Value*, const PropertyCallbackInfo*);
+
 // Object
 const Object* v8__Object__New(Isolate* isolate);
 const String* v8__Object__GetConstructorName(const Object* self);
@@ -761,6 +770,16 @@ void v8__Object__DefineOwnProperty(
     const Name* key,
     const Value* value,
     PropertyAttribute attr,
+    MaybeBool* out);
+// Object counterpart of v8__Template__SetLazyDataProperty. data may be null.
+void v8__Object__SetLazyDataProperty(
+    const Object* self,
+    const Context* ctx,
+    const Name* key,
+    AccessorNameGetterCallback getter,
+    const Value* data,
+    PropertyAttribute attribute,
+    SideEffectType getter_side_effect_type,
     MaybeBool* out);
 const Context* v8__Object__GetCreationContext(const Object* self);
 int v8__Object__GetIdentityHash(const Object* self);
@@ -882,9 +901,6 @@ void v8__Template__SetAccessorProperty(
     const FunctionTemplate* setter,
     PropertyAttribute attribute);
 
-typedef struct PropertyCallbackInfo PropertyCallbackInfo;
-typedef void (*AccessorNameGetterCallback)(const Name*, const PropertyCallbackInfo*);
-typedef void (*AccessorNameSetterCallback)(const Name*, const Value*, const PropertyCallbackInfo*);
 void v8__Template__SetNativeDataProperty__DEFAULT(
     const Template* self,
     const Name* key,
@@ -894,6 +910,15 @@ void v8__Template__SetNativeDataProperty__DEFAULT2(
     const Name* key,
     const AccessorNameGetterCallback* getter,
     const AccessorNameSetterCallback* setter);
+// The getter runs on the first read, and V8 then replaces the property with a
+// data property holding what it returned. data may be null.
+void v8__Template__SetLazyDataProperty(
+    const Template* self,
+    const Name* key,
+    AccessorNameGetterCallback getter,
+    const Value* data,
+    PropertyAttribute attribute,
+    SideEffectType getter_side_effect_type);
 
 typedef void (*AccessorNameGetterCallback)(const Name*, const PropertyCallbackInfo*);
 typedef void (*AccessorNameSetterCallback)(const Name*, const Value*, const PropertyCallbackInfo*);
@@ -967,12 +992,6 @@ const Value* v8__ReturnValue__Get(
 
 // FunctionTemplate
 typedef void (*FunctionCallback)(const FunctionCallbackInfo*);
-
-typedef enum SideEffectType {
-    kSideEffectType_HasSideEffect = 0,
-    kSideEffectType_HasNoSideEffect = 1,
-    kSideEffectType_HasSideEffectToReceiver = 2,
-} SideEffectType;
 
 typedef enum ConstructorBehavior {
     kConstructorBehavior_Throw = 0,
