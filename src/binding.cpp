@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <bit>
 #include <cassert>
 #include <memory>
 #include <mutex>
@@ -2093,41 +2092,12 @@ const v8::Value* v8__ReturnValue__Get(
 }
 
 // Fast API calls
-typedef enum CTypeInfoType {
-    kCTypeInfoType_Void = 0,
-    kCTypeInfoType_Bool = 1,
-    kCTypeInfoType_Uint8 = 2,
-    kCTypeInfoType_Int32 = 3,
-    kCTypeInfoType_Uint32 = 4,
-    kCTypeInfoType_Int64 = 5,
-    kCTypeInfoType_Uint64 = 6,
-    kCTypeInfoType_Float32 = 7,
-    kCTypeInfoType_Float64 = 8,
-    kCTypeInfoType_Pointer = 9,
-    kCTypeInfoType_V8Value = 10,
-    kCTypeInfoType_SeqOneByteString = 11,
-    kCTypeInfoType_ApiObject = 12,
-    kCTypeInfoType_Any = 13,
-    kCTypeInfoType_CallbackOptions = 255,
-} CTypeInfoType;
-
-typedef enum CTypeInfoFlags {
-    kCTypeInfoFlags_None = 0,
-    kCTypeInfoFlags_AllowSharedBit = 1 << 0,
-    kCTypeInfoFlags_EnforceRangeBit = 1 << 1,
-    kCTypeInfoFlags_ClampBit = 1 << 2,
-    kCTypeInfoFlags_IsRestrictedBit = 1 << 3,
-} CTypeInfoFlags;
-
 typedef struct CTypeInfo {
     uint8_t type;
     uint8_t flags;
 } CTypeInfo;
-
-typedef enum Int64Representation {
-    kInt64Representation_Number = 0,
-    kInt64Representation_BigInt = 1,
-} Int64Representation;
+static_assert(sizeof(CTypeInfo) == sizeof(v8::CTypeInfo), "CTypeInfo size mismatch");
+static_assert(alignof(CTypeInfo) == alignof(v8::CTypeInfo), "CTypeInfo alignment mismatch");
 
 typedef struct CFunctionInfo {
     CTypeInfo return_info;
@@ -2135,21 +2105,29 @@ typedef struct CFunctionInfo {
     unsigned int arg_count;
     const CTypeInfo* arg_info;
 } CFunctionInfo;
+static_assert(sizeof(CFunctionInfo) == sizeof(v8::CFunctionInfo), "CFunctionInfo size mismatch");
+static_assert(alignof(CFunctionInfo) == alignof(v8::CFunctionInfo), "CFunctionInfo alignment mismatch");
 
 typedef struct CFunction {
     const void* address;
     const CFunctionInfo* type_info;
 } CFunction;
+static_assert(sizeof(CFunction) == sizeof(v8::CFunction), "CFunction size mismatch");
+static_assert(alignof(CFunction) == alignof(v8::CFunction), "CFunction alignment mismatch");
 
 typedef struct FastApiCallbackOptions {
     v8::Isolate* isolate;
     const v8::Value* data;
 } FastApiCallbackOptions;
+static_assert(sizeof(FastApiCallbackOptions) == sizeof(v8::FastApiCallbackOptions), "FastApiCallbackOptions size mismatch");
+static_assert(alignof(FastApiCallbackOptions) == alignof(v8::FastApiCallbackOptions), "FastApiCallbackOptions alignment mismatch");
 
 typedef struct FastOneByteString {
     const char* data;
     uint32_t length;
 } FastOneByteString;
+static_assert(sizeof(FastOneByteString) == sizeof(v8::FastOneByteString), "FastOneByteString size mismatch");
+static_assert(alignof(FastOneByteString) == alignof(v8::FastOneByteString), "FastOneByteString alignment mismatch");
 
 // FunctionTemplate
 
