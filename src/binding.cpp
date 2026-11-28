@@ -2115,19 +2115,25 @@ typedef struct CFunction {
 static_assert(sizeof(CFunction) == sizeof(v8::CFunction), "CFunction size mismatch");
 static_assert(alignof(CFunction) == alignof(v8::CFunction), "CFunction alignment mismatch");
 
-typedef struct FastApiCallbackOptions {
-    v8::Isolate* isolate;
-    const v8::Value* data;
-} FastApiCallbackOptions;
-static_assert(sizeof(FastApiCallbackOptions) == sizeof(v8::FastApiCallbackOptions), "FastApiCallbackOptions size mismatch");
-static_assert(alignof(FastApiCallbackOptions) == alignof(v8::FastApiCallbackOptions), "FastApiCallbackOptions alignment mismatch");
-
-typedef struct FastOneByteString {
-    const char* data;
-    uint32_t length;
-} FastOneByteString;
-static_assert(sizeof(FastOneByteString) == sizeof(v8::FastOneByteString), "FastOneByteString size mismatch");
-static_assert(alignof(FastOneByteString) == alignof(v8::FastOneByteString), "FastOneByteString alignment mismatch");
+// binding.h hard-codes these as kCTypeInfoType_*.
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kVoid) == 0, "CTypeInfo::Type::kVoid changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kBool) == 1, "CTypeInfo::Type::kBool changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint8) == 2, "CTypeInfo::Type::kUint8 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kInt32) == 3, "CTypeInfo::Type::kInt32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint32) == 4, "CTypeInfo::Type::kUint32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kInt64) == 5, "CTypeInfo::Type::kInt64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint64) == 6, "CTypeInfo::Type::kUint64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kFloat32) == 7, "CTypeInfo::Type::kFloat32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kFloat64) == 8, "CTypeInfo::Type::kFloat64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kPointer) == 9, "CTypeInfo::Type::kPointer changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kV8Value) == 10, "CTypeInfo::Type::kV8Value changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kSeqOneByteString) == 11, "CTypeInfo::Type::kSeqOneByteString changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kApiObject) == 12, "CTypeInfo::Type::kApiObject changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kAny) == 13, "CTypeInfo::Type::kAny changed");
+static_assert(static_cast<int>(v8::CTypeInfo::kCallbackOptionsType) == 255, "CTypeInfo::kCallbackOptionsType changed");
+// CFunctionInfo.int64_representation
+static_assert(static_cast<int>(v8::CFunctionInfo::Int64Representation::kNumber) == 0, "Int64Representation::kNumber changed");
+static_assert(static_cast<int>(v8::CFunctionInfo::Int64Representation::kBigInt) == 1, "Int64Representation::kBigInt changed");
 
 // FunctionTemplate
 

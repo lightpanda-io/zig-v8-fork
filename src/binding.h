@@ -984,25 +984,15 @@ typedef enum CTypeInfoType {
     // CTypeInfo::kCallbackOptionsType; only valid as the last argument.
     kCTypeInfoType_CallbackOptions = 255,
 } CTypeInfoType;
-typedef enum CTypeInfoFlags {
-    kCTypeInfoFlags_None = 0,
-    kCTypeInfoFlags_AllowSharedBit = 1 << 0,   // ArrayBuffer or TypedArray
-    kCTypeInfoFlags_EnforceRangeBit = 1 << 1,  // integral types
-    kCTypeInfoFlags_ClampBit = 1 << 2,         // integral types
-    kCTypeInfoFlags_IsRestrictedBit = 1 << 3,  // float or double
-} CTypeInfoFlags;
+
 typedef struct CTypeInfo {
     uint8_t type;   // CTypeInfoType
-    uint8_t flags;  // CTypeInfoFlags, or-ed
+    uint8_t flags;  // v8::CTypeInfo::Flags, or-ed; 0 for none
 } CTypeInfo;
 
-typedef enum Int64Representation {
-    kInt64Representation_Number = 0,  // 64-bit integers as JS numbers
-    kInt64Representation_BigInt = 1,  // 64-bit integers as BigInts
-} Int64Representation;
 typedef struct CFunctionInfo {
     CTypeInfo return_info;
-    uint8_t int64_representation;  // Int64Representation
+    uint8_t int64_representation;  // 0: JS number, 1: BigInt
     // Counts the receiver and, if last, the kCallbackOptions argument.
     unsigned int arg_count;
     const CTypeInfo* arg_info;
@@ -1012,17 +1002,6 @@ typedef struct CFunction {
     const void* address;  // the fast callback
     const CFunctionInfo* type_info;
 } CFunction;
-
-typedef struct FastApiCallbackOptions {
-    Isolate* isolate;
-    // The FunctionTemplate's data, or undefined.
-    const Value* data;
-} FastApiCallbackOptions;
-
-typedef struct FastOneByteString {
-    const char* data;
-    uint32_t length;
-} FastOneByteString;
 
 // FunctionTemplate
 typedef void (*FunctionCallback)(const FunctionCallbackInfo*);
