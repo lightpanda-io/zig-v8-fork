@@ -965,6 +965,44 @@ void v8__ReturnValue__Set(
 const Value* v8__ReturnValue__Get(
     const ReturnValue self);
 
+// Fast API
+typedef enum CTypeInfoType {
+    kCTypeInfoType_Void = 0,
+    kCTypeInfoType_Bool = 1,
+    kCTypeInfoType_Uint8 = 2,
+    kCTypeInfoType_Int32 = 3,
+    kCTypeInfoType_Uint32 = 4,
+    kCTypeInfoType_Int64 = 5,
+    kCTypeInfoType_Uint64 = 6,
+    kCTypeInfoType_Float32 = 7,
+    kCTypeInfoType_Float64 = 8,
+    kCTypeInfoType_Pointer = 9,
+    kCTypeInfoType_V8Value = 10,
+    kCTypeInfoType_SeqOneByteString = 11,
+    kCTypeInfoType_ApiObject = 12,
+    kCTypeInfoType_Any = 13,
+    // CTypeInfo::kCallbackOptionsType; only valid as the last argument.
+    kCTypeInfoType_CallbackOptions = 255,
+} CTypeInfoType;
+
+typedef struct CTypeInfo {
+    uint8_t type;   // CTypeInfoType
+    uint8_t flags;  // v8::CTypeInfo::Flags, or-ed; 0 for none
+} CTypeInfo;
+
+typedef struct CFunctionInfo {
+    CTypeInfo return_info;
+    uint8_t int64_representation;  // 0: JS number, 1: BigInt
+    // Counts the receiver and, if last, the kCallbackOptions argument.
+    unsigned int arg_count;
+    const CTypeInfo* arg_info;
+} CFunctionInfo;
+
+typedef struct CFunction {
+    const void* address;  // the fast callback
+    const CFunctionInfo* type_info;
+} CFunction;
+
 // FunctionTemplate
 typedef void (*FunctionCallback)(const FunctionCallbackInfo*);
 
@@ -986,6 +1024,9 @@ typedef struct v8__FunctionTemplateConfig {
     int length;
     ConstructorBehavior behavior;
     SideEffectType side_effect_type;
+    // Fast API callback, or null. Requires kConstructorBehavior_Throw; V8 keeps
+    // the type_info pointer, so it must outlive the template.
+    const CFunction* c_function;
 } v8__FunctionTemplateConfig;
 
 const FunctionTemplate* v8__FunctionTemplate__New__DEFAULT(

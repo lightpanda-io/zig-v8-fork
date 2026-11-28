@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include "include/cppgc/persistent.h"
 #include "include/libplatform/libplatform.h"
+#include "include/v8-fast-api-calls.h"
 #include "include/v8-inspector.h"
 #include "include/v8-profiler.h"
 #include "include/v8.h"
@@ -2090,6 +2091,50 @@ const v8::Value* v8__ReturnValue__Get(
     return local_to_ptr(self.Get());
 }
 
+// Fast API calls
+typedef struct CTypeInfo {
+    uint8_t type;
+    uint8_t flags;
+} CTypeInfo;
+static_assert(sizeof(CTypeInfo) == sizeof(v8::CTypeInfo), "CTypeInfo size mismatch");
+static_assert(alignof(CTypeInfo) == alignof(v8::CTypeInfo), "CTypeInfo alignment mismatch");
+
+typedef struct CFunctionInfo {
+    CTypeInfo return_info;
+    uint8_t int64_representation;
+    unsigned int arg_count;
+    const CTypeInfo* arg_info;
+} CFunctionInfo;
+static_assert(sizeof(CFunctionInfo) == sizeof(v8::CFunctionInfo), "CFunctionInfo size mismatch");
+static_assert(alignof(CFunctionInfo) == alignof(v8::CFunctionInfo), "CFunctionInfo alignment mismatch");
+
+typedef struct CFunction {
+    const void* address;
+    const CFunctionInfo* type_info;
+} CFunction;
+static_assert(sizeof(CFunction) == sizeof(v8::CFunction), "CFunction size mismatch");
+static_assert(alignof(CFunction) == alignof(v8::CFunction), "CFunction alignment mismatch");
+
+// binding.h hard-codes these as kCTypeInfoType_*.
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kVoid) == 0, "CTypeInfo::Type::kVoid changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kBool) == 1, "CTypeInfo::Type::kBool changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint8) == 2, "CTypeInfo::Type::kUint8 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kInt32) == 3, "CTypeInfo::Type::kInt32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint32) == 4, "CTypeInfo::Type::kUint32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kInt64) == 5, "CTypeInfo::Type::kInt64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kUint64) == 6, "CTypeInfo::Type::kUint64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kFloat32) == 7, "CTypeInfo::Type::kFloat32 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kFloat64) == 8, "CTypeInfo::Type::kFloat64 changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kPointer) == 9, "CTypeInfo::Type::kPointer changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kV8Value) == 10, "CTypeInfo::Type::kV8Value changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kSeqOneByteString) == 11, "CTypeInfo::Type::kSeqOneByteString changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kApiObject) == 12, "CTypeInfo::Type::kApiObject changed");
+static_assert(static_cast<int>(v8::CTypeInfo::Type::kAny) == 13, "CTypeInfo::Type::kAny changed");
+static_assert(static_cast<int>(v8::CTypeInfo::kCallbackOptionsType) == 255, "CTypeInfo::kCallbackOptionsType changed");
+// CFunctionInfo.int64_representation
+static_assert(static_cast<int>(v8::CFunctionInfo::Int64Representation::kNumber) == 0, "Int64Representation::kNumber changed");
+static_assert(static_cast<int>(v8::CFunctionInfo::Int64Representation::kBigInt) == 1, "Int64Representation::kBigInt changed");
+
 // FunctionTemplate
 
 typedef enum SideEffectType {
@@ -2110,6 +2155,7 @@ typedef struct v8__FunctionTemplateConfig {
     int length;
     ConstructorBehavior behavior;
     SideEffectType side_effect_type;
+    const v8::CFunction* c_function;
 } v8__FunctionTemplateConfig;
 
 const v8::FunctionTemplate* v8__FunctionTemplate__New__DEFAULT(
@@ -2145,7 +2191,8 @@ const v8::FunctionTemplate* v8__FunctionTemplate__New__Config(
         signature,
         config->length,
         behavior,
-        side_effect
+        side_effect,
+        config->c_function
     ));
 }
 
